@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>30 Second Timer with Reload</title>
+</head>
+
+<body>
+    <h2 id="currentTime"></h2>
+    <h3>Timer: <span id="timer">30</span> seconds remaining</h3>
+
+    <script>
+        // Show current date and time
+        function updateCurrentTime() {
+            const now = new Date();
+            const formattedTime = now.toLocaleString(); // Local format
+            document.getElementById('currentTime').textContent = `Current Time: ${formattedTime}`;
+        }
+
+        updateCurrentTime(); // initial call
+        setInterval(updateCurrentTime, 1000); // update every second
+
+        // 30 second timer
+        let countdown = 30;
+        const timerElement = document.getElementById('timer');
+
+        const interval = setInterval(() => {
+            countdown--;
+            timerElement.textContent = countdown;
+            if (countdown <= 0) {
+                clearInterval(interval);
+                timerElement.textContent = 'Time\'s up! Reloading...';
+
+                // Reload after 1 second delay (optional)
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        }, 1000);
+    </script>
+</body>
+
+</html>                                          

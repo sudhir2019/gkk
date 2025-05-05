@@ -1,0 +1,10 @@
+body {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.231;
+}
+
+body, textarea {
+    font-family: Roboto;
+    color: #FFFFFF;
+}

@@ -1,0 +1,36 @@
+.welcome-details{
+	float:left;
+	width:100%;
+	height:auto;
+	font-family:Arial,Helvetica,sans-serif;
+	margin:10px 0 0 0;	
+}
+.welcome-details p{
+	margin:0;
+	float:left;
+	width:100%;
+}
+.welcome-details p span{
+	font-size:14px !important;
+	color:#0000ff;
+}
+.wel-msg
+{
+    color:#990000 !important;
+    width:100%;
+    text-align:center;
+}
+.welcome-details p strong{
+	color:#0000c0;
+}
+
+.container
+{
+    float: left;
+    width: 100%;
+    height: auto;
+    margin: 20px 0 0 0;
+    padding: 0;
+    position: relative;
+    display: block;
+}

@@ -1,0 +1,33 @@
+.GridHead {
+	background-color: #999966;
+	height: 25px;
+	text-align: center;
+	font-family: arial, Helvetica, sans-serif;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+.GridFooter {
+	background-color: #999966;
+	height: 25px;
+	text-align: center;
+	font-family: arial, Helvetica, sans-serif;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+.NormalRow {
+	font-family: arial, Helvetica, sans-serif;
+	font-size: 14.4px;
+	color: #000000;
+	text-align: center;
+
+}
+
+.AlternativeRow {
+	background-color: #CCCCCC;
+	font-family: arial, Helvetica, sans-serif;
+	font-size: 14.4px;
+	color: #003300;
+	text-align: center;
+}

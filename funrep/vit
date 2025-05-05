@@ -1,0 +1,59 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import inject from "@rollup/plugin-inject";
+import path from "path"; // Ensure path is imported
+
+export default defineConfig(({ mode }) => {
+  console.log(`Running Vite in ${mode} mode`);
+
+  return {
+    mode, // Explicitly set the mode
+    build: {
+      minify: mode === "production", // Enable minification only in production
+      sourcemap: false,
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        external: ["fs"],
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              return id.toString().split("node_modules/")[1].split("/")[0];
+            }
+          },
+        },
+      },
+    },
+    css: {
+      devSourcemap: false, // Disable source maps in development
+    },
+    define: {
+      "global.browser": "{}",
+    },
+    server: {
+      watch: {
+        usePolling: true,
+      },
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "src"),
+        "styled-components": path.resolve(__dirname, "node_modules/styled-components"),
+      },
+    },
+    plugins: [
+      react({
+        include: "**/*.jsx",
+      }),
+      react({ fastRefresh: false }),
+      inject({
+        $: "jquery",
+        jQuery: "jquery",
+        include: ["**/*.js", "**/*.jsx"], // ✅ Only inject into JS/JSX files
+      }),
+    ],
+    optimizeDeps: {
+      include: ["jquery", "styled-components"], // ✅ Ensure styled-components is included
+      exclude: ["font-awesome/css/font-awesome.min.css"], // ✅ Exclude Font Awesome CSS
+    },
+  };
+});

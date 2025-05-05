@@ -1,0 +1,102 @@
+/*
+
+    DatePicker: a lightweight jQuery date picker plugin
+
+    Default theme
+
+    copyright (c) 2011 - 2014 Stefan Gabos
+    http://stefangabos.ro/jquery/zebra-datepicker/
+
+*/
+
+.DatePicker *,
+.DatePicker *:after,
+.DatePicker *:before  { -moz-box-sizing: content-box !important; -webkit-box-sizing: content-box !important; box-sizing: content-box !important }
+
+.DatePicker           { position: absolute; background: #666; border: 3px solid #666; z-index: 100; font-family: Tahoma, Arial, Helvetica, sans-serif; font-size: 13px; }
+
+.DatePicker *         { margin: 0; padding: 0; color: #000; background: transparent; border: none }
+
+/* = GLOBALS
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker table                      { border-collapse: collapse; border-spacing: 0; width: auto; table-layout: auto; }
+
+.DatePicker td,
+.DatePicker th                         { text-align: center; padding: 5px 0 }
+
+.DatePicker td                         { cursor: pointer }
+
+.DatePicker .dp_daypicker,
+.DatePicker .dp_monthpicker,
+.DatePicker .dp_yearpicker             { margin-top: 3px }
+
+.DatePicker .dp_daypicker td,
+.DatePicker .dp_daypicker th,
+.DatePicker .dp_monthpicker td,
+.DatePicker .dp_yearpicker td         { background: #E8E8E8; width: 30px; border: 1px solid #7BACD2 }
+
+.DatePicker,
+.DatePicker .dp_header .dp_hover,
+.DatePicker .dp_footer .dp_hover { -webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px }
+
+/* = VISIBLE/HIDDEN STATES (USE TRANSITIONS FOR EFFECTS)
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker.dp_visible               { display: block; filter: alpha(opacity=100); -khtml-opacity: 1; -moz-opacity: 1; opacity: 1; transition: opacity 0.2s ease-in-out }
+.DatePicker.dp_hidden                { display: none; filter: alpha(opacity=0); -khtml-opacity: 0; -moz-opacity: 0; opacity: 0 }
+
+/* = HEADER
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_header td             { color: #FFF }
+
+.DatePicker .dp_header .dp_previous,
+.DatePicker .dp_header .dp_next       { width: 30px }
+
+.DatePicker .dp_header .dp_caption    { font-weight: bold }
+.DatePicker .dp_header .dp_hover      { background: #222; color: #FFF }
+
+/* = DATEPICKER
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_daypicker th              { background: #20B7C9 }
+.DatePicker td.dp_not_in_month            { background: #20B7C9; color: #CDCDCD; cursor: default }
+.DatePicker td.dp_not_in_month_selectable { background: #20B7C9; color: #CDCDCD; cursor: pointer }
+.DatePicker td.dp_weekend                 { background: #D8D8D8 }
+.DatePicker td.dp_weekend_disabled        { color: #CCC; cursor: default }
+.DatePicker td.dp_selected                { background: #5A4B4B; color: #FFF !important }
+.DatePicker td.dp_week_number             { background: #20B7C9; color: #555; cursor: text; font-style: italic }
+
+/* = MONTHPICKER
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_monthpicker td    { width: 33% }
+
+/* = YEARPICKER
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_yearpicker td     { width: 33% }
+
+/* = FOOTER
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_footer            { margin-top: 3px }
+.DatePicker .dp_footer .dp_hover  { background: #222; color: #FFF }
+
+/* = SELECT CURRENT DAY
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_today { color: #FFF; padding: 3px }
+
+/* = CLEAR DATE
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker .dp_clear { color: #FFF; padding: 3px }
+
+/* = SOME MORE GLOBALS (MUST BE LAST IN ORDER TO OVERWRITE PREVIOUS PROPERTIES)
+----------------------------------------------------------------------------------------------------------------------*/
+.DatePicker td.dp_current             { color: #C40000 }
+.DatePicker td.dp_disabled_current    { color: #E38585 }
+.DatePicker td.dp_disabled            { background: #F3F3F3; color: #CDCDCD; cursor: default }
+.DatePicker td.dp_hover               { background: #482424; color: #FFF }
+
+/* = ICON
+----------------------------------------------------------------------------------------------------------------------*/
+button.DatePicker_Icon                { display: block; position: absolute; width: 16px; height: 16px; background: url('calendar.png') no-repeat left top; text-indent: -9000px; border: none; cursor: pointer; padding: 0; line-height: 0; vertical-align: top }
+button.DatePicker_Icon_Disabled       { background-image: url('calendar-disabled.png') }
+
+/* don't set vertical margins! */
+button.DatePicker_Icon                { margin: 0 0 0 3px }
+button.DatePicker_Icon_Inside         { margin: 0 3px 0 0 }

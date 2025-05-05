@@ -1,0 +1,16 @@
+﻿span.field-validation-error
+{
+	text-shadow: 2px 2px 5px #800000;
+	color: #F7972A;
+	display: list-item;
+	font-size:13px;
+	margin-left:25px;
+	font-weight:bold;
+	font-family:Arial;
+	float:left;
+	width:100%;
+}
+
+.bar-chart {
+	opacity: 0.6;
+}

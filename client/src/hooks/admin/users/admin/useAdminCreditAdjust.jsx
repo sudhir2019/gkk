@@ -1,0 +1,89 @@
+import { useDispatch, useSelector } from 'react-redux';
+import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { creditAdjust } from "../../../../stores/actions/adminActions";
+import { getUserByIdAsync } from '../../../../stores/actions/authActions';
+import useFetchAdminById from "./useFetchAdminById";
+import { loadcredit } from '../../../../stores/actions/creditActions';
+
+export default function useAdminCreditAdjust(id) {
+    const dispatch = useDispatch();
+    const { admin } = useFetchAdminById(id);
+    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+
+    const { authUser } = useSelector((state) => state.auth);
+    const [showCreditAdjustMessage, setShowCreditAdjustMessage] = useState(null);
+    const [isCreditAdjustLoading, setIsCreditAdjustLoading] = useState(false);
+    const [showCreditAdjustError, setShowCreditAdjustError] = useState(null);
+   
+    const { adminError } = useSelector((state) => state.admins);
+    useEffect(() => {
+        if (showCreditAdjustMessage || showCreditAdjustError) {
+            const timer = setTimeout(() => {
+                setShowCreditAdjustMessage(null);
+                setShowCreditAdjustError(null);
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [showCreditAdjustMessage, showCreditAdjustError]);
+
+    const onSubmit = async (data) => {
+        setIsCreditAdjustLoading(true);
+
+        if (!authUser?._id) {
+            setShowCreditAdjustError("User authentication is missing. Please log in again.");
+            setIsCreditAdjustLoading(false);
+            return;
+        }
+
+        const adjustAmount = parseFloat(data.transferAmount);
+        if (isNaN(adjustAmount) || adjustAmount <= 0) {
+            setShowCreditAdjustError("Invalid adjustment amount. Please enter a valid number.");
+            setIsCreditAdjustLoading(false);
+            return;
+        }
+
+        if (!data.password) {
+            setShowCreditAdjustError("Password is required for credit adjustment.");
+            setIsCreditAdjustLoading(false);
+            return;
+        }
+
+        const requestData = {
+            userId: authUser._id,
+            password: data.password,
+            adjustAmount,
+            transactionType: data.transactionType || "credit",
+            toUserId: id,
+            authUser:authUser
+        };
+
+        try {
+            await dispatch(creditAdjust(requestData)).unwrap();
+            await dispatch(getUserByIdAsync(authUser._id)).unwrap();
+           
+
+            setShowCreditAdjustMessage("Credit adjustment successful!");
+            reset();
+        } catch (err) {
+            console.error("Error during credit adjustment:", err);
+            const errorMessage = adminError || err?.response?.data?.message || err?.message || "An error occurred.";
+            setShowCreditAdjustError(errorMessage);
+        } finally {
+            setIsCreditAdjustLoading(false);
+        }
+    };
+
+    return {
+        register,
+        handleSubmit,
+        onSubmit,
+        isCreditAdjustLoading,
+        admin,
+        authUser,
+        showCreditAdjustMessage,
+        showCreditAdjustError,
+        errors,
+        
+    };
+}

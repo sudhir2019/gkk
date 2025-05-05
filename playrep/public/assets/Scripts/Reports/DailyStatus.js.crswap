@@ -1,0 +1,705 @@
+/// <reference path="../jquery-1.9.1.js" />
+/// <reference path="../jquery-ui.js" />
+
+$(function () {
+    var startSelectDate = new Date();
+    startSelectDate.setMonth(startSelectDate.getMonth() - 1);
+
+    var endSelectDate = new Date();
+
+    $("#txtSelectDate").DatePicker({
+        format: "d-M-Y",
+        direction: [$.datepicker.formatDate("dd-M-yy", startSelectDate), $.datepicker.formatDate("dd-M-yy", endSelectDate)]
+    });
+
+
+    function forManager() {
+        $("#dvDailyStatus").JqGrid({
+            url: "DailyStatusData",
+            columnHeaders: ["Sr. No.", "Manager Name", "Manager ID", "Profit"],
+            columnAttributes: [{ columnName: "SRNO", dataType: "int", align: "center" },
+                { columnName: "NAME", align: "left" },
+                { columnName: "MANAGER_ID", align: "center" },
+                { columnName: "SUMPROFIT", align: "right"}],
+            postDataDetails: [{ strSelectedDate: $("#txtSelectDate").val()}],
+            themeUrl: "../Content/JqGrid/JqGridTheme.css",
+            gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+            pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+            sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+            success: function (repData) {
+
+                $("#dvDailyStatus table:first tbody tr").each(function () {
+                    var allTds = $(this).find("td");
+
+                    var tempProfit = parseFloat($(allTds[3]).html());
+
+                    if (tempProfit < 0)
+                        $(allTds[3]).attr("style", "color:red");
+                    else
+                        $(allTds[3]).removeAttr("style");
+                });
+
+                if ($("#dvDailyStatus table:first tfoot tr").length > 0)
+                    $("#dvDailyStatus table:first tfoot tr").html("");
+                else
+                    $("#dvDailyStatus table:first tfoot").append("<tr></tr>");
+
+                var totalProfit = 0;
+
+                for (var i = 0; i < repData.length; i++) {
+                    totalProfit += parseFloat(repData[i]["SUMPROFIT"]);
+                }
+
+                totalProfit = (totalProfit).toFixed(2);
+
+                if (totalProfit >= 0)
+                    $("#dvDailyStatus table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td align=\"right\">" + totalProfit + "</td>");
+                else
+                    $("#dvDailyStatus table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+                var GridViewTable = $("#dvDailyStatus table:first tbody tr");
+                $(GridViewTable).each(function () {
+                    var managerCellText = $(this).find("td").eq(2).text();
+                    var managerCellNewData = "<a href='javascript://' style='color:purple'>" + managerCellText + "</a>";
+                    $(this).find("td").eq(2).empty();
+                    $(this).find("td").eq(2).append(managerCellNewData);
+                });
+
+                $("#dvDailyStatus table:first tbody tr td a").bind("click", function () {
+
+                    $("#dvSingleCCSDetails").html("");
+                    $("#dvPopUpMessage").html("");
+                    loading(); // loading
+                    setTimeout(function () { // then show popup, deley in .5 second
+                        loadPopup(); // function show popup 
+                    }, 500); // .5 second
+
+                    var managerID = $(this).text();
+                    $("#hdnManagerId").val(managerID);
+
+                    $("#dvSingleCCSDetails").JqGrid({
+                        url: "DailyStatusMoreMktMgr",
+                        columnHeaders: ["Sr. No.", "Agent ID", "Agent Name", "Agent Profit"],
+                        columnAttributes: [{ columnName: "SRNO", align: "center" },
+                                               { columnName: "AGENT_ID", align: "center" },
+                                               { columnName: "CCS_LOCATION", align: "left" },
+                                               { columnName: "NEW_PROFIT", align: "right"}],
+                        postDataDetails: [{ strManagerID: managerID },
+                                              { strSelectedDate: $("#hdnDailyStatusDate").val()}],
+                        themeUrl: "../Content/JqGrid/JqGridTheme.css",
+                        gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+                        pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+                        sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+                        success: function (repData) {
+
+                            $("#dvSingleCCSDetails table:first tbody tr").each(function () {
+                                var allTds = $(this).find("td");
+
+                                var tempProfit = parseFloat($(allTds[3]).html());
+
+                                if (tempProfit < 0)
+                                    $(allTds[3]).attr("style", "color:red");
+                                else
+                                    $(allTds[3]).removeAttr("style");
+                            });
+
+
+                            if ($("#dvSingleCCSDetails table:first tfoot tr").length > 0)
+                                $("#dvSingleCCSDetails table:first tfoot tr").html("");
+                            else
+                                $("#dvSingleCCSDetails table:first tfoot").append("<tr></tr>");
+
+                            var totalProfit = 0;
+
+                            for (var i = 0; i < repData.length; i++) {
+                                totalProfit += parseFloat(repData[i]["NEW_PROFIT"]);
+                            }
+
+                            totalProfit = (totalProfit).toFixed(2);
+
+                            if (totalProfit >= 0)
+                                $("#dvSingleCCSDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td align=\"right\">" + totalProfit + "</td>");
+                            else
+                                $("#dvSingleCCSDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+                            closeloading();
+                            $("#dvSingleCCSDetails table > tbody  > tr").each(function () {
+                                var MemberCellText = $(this).find("td").eq(1).text();
+                                var MemberCellNewData = "<a href='javascript://' style='color:purple'>" + MemberCellText + "</a>";
+                                $(this).find("td").eq(1).empty();
+                                $(this).find("td").eq(1).append(MemberCellNewData);
+                            });
+                            $("#dvPopUpMessage").html("For Manager ID : " + managerID);
+                            $("#dvSingleCCSDetails table:first tbody tr td a").bind("click", function () {
+
+                                $("#dvSingleMgrDetails").html("");
+                                $("#dvPopUpMessage1").html("");
+                                loading(); // loading
+                                setTimeout(function () { // then show popup, deley in .5 second
+                                    loadPopup1(); // function show popup 
+                                }, 500); // .5 second
+
+
+                                var strAgentID = $(this).text();
+                                $("#dvSingleMgrDetails").JqGrid({
+                                    url: "DailyStatusForMember",
+                                    columnHeaders: ["Member ID", "Profit"],
+                                    columnAttributes: [{ columnName: "MEMBER", align: "center" },
+                                               { columnName: "NEW_PROFIT", align: "right"}],
+                                    postDataDetails: [{ strManagerID: $("#hdnManagerId").val() },
+                                    { strAgentId: $(this).text() },
+                                              { strSelectedDate: $("#hdnDailyStatusDate").val()}],
+                                    themeUrl: "../Content/JqGrid/JqGridTheme.css",
+                                    gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+                                    pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+                                    sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+                                    success: function (repData) {
+
+                                        $("#dvSingleMgrDetails table:first tbody tr").each(function () {
+                                            var allTds = $(this).find("td");
+
+                                            var tempProfit = parseFloat($(allTds[1]).html());
+
+                                            if (tempProfit < 0)
+                                                $(allTds[1]).attr("style", "color:red");
+                                            else
+                                                $(allTds[1]).removeAttr("style");
+                                        });
+
+
+                                        if ($("#dvSingleMgrDetails table:first tfoot tr").length > 0)
+                                            $("#dvSingleMgrDetails table:first tfoot tr").html("");
+                                        else
+                                            $("#dvSingleMgrDetails table:first tfoot").append("<tr></tr>");
+
+                                        var totalProfit = 0;
+
+                                        for (var i = 0; i < repData.length; i++) {
+                                            totalProfit += parseFloat(repData[i]["NEW_PROFIT"]);
+                                        }
+
+                                        totalProfit = (totalProfit).toFixed(2);
+
+                                        if (totalProfit >= 0)
+                                            $("#dvSingleMgrDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td align=\"right\">" + totalProfit + "</td>");
+                                        else
+                                            $("#dvSingleMgrDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+
+                                        closeloading();
+
+                                        $("#dvPopUpMessage1").html("For Agent ID : " + strAgentID);
+                                    },
+                                    errorMsg: function (repError) {
+                                        if (repError == "Session Expired") {
+                                            window.location = "/Login.mvc/Index";
+                                        }
+                                        else {
+                                            $("#dvSingleMgrDetails").html(repError);
+                                            closeloading();
+                                        }
+                                    }
+                                });
+                            });
+
+
+                        },
+                        errorMsg: function (repError) {
+                            if (repError == "Session Expired") {
+                                window.location = "/Login.mvc/Index";
+                            }
+                            else {
+                                $("#dvSingleCCSDetails").html(repError);
+                                closeloading();
+                            }
+                        }
+                    });
+                });
+
+                $("#loader").hide();
+            },
+            errorMsg: function (repError) {
+                if (repError == "Session Expired") {
+                    window.location = "/Login.mvc/Index";
+                }
+                else {
+                    $("#dvDailyStatus").html(repError);
+                    $("#loader").hide();
+                }
+            }
+        });
+    }
+
+    function forMarketing() {
+        $("#dvDailyStatus").JqGrid({
+            url: "DailyStatusData",
+            columnHeaders: ["Sr. No.", "Manager Name", "Manager ID", "Profit"],
+            columnAttributes: [{ columnName: "SRNO", dataType: "int", align: "center" },
+                { columnName: "NAME", align: "left" },
+                { columnName: "MANAGER_ID", align: "center" },
+                { columnName: "SUMPROFIT", align: "right"}],
+            postDataDetails: [{ strSelectedDate: $("#txtSelectDate").val()}],
+            themeUrl: "../Content/JqGrid/JqGridTheme.css",
+            gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+            pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+            sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+            success: function (repData) {
+
+                $("#dvDailyStatus table:first tbody tr").each(function () {
+                    var allTds = $(this).find("td");
+
+                    var tempProfit = parseFloat($(allTds[3]).html());
+
+                    if (tempProfit < 0)
+                        $(allTds[3]).attr("style", "color:red");
+                    else
+                        $(allTds[3]).removeAttr("style");
+                });
+
+                if ($("#dvDailyStatus table:first tfoot tr").length > 0)
+                    $("#dvDailyStatus table:first tfoot tr").html("");
+                else
+                    $("#dvDailyStatus table:first tfoot").append("<tr></tr>");
+
+                var totalProfit = 0;
+
+                for (var i = 0; i < repData.length; i++) {
+                    totalProfit += parseFloat(repData[i]["SUMPROFIT"]);
+                }
+
+                totalProfit = (totalProfit).toFixed(2);
+
+                if (totalProfit >= 0)
+                    $("#dvDailyStatus table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td align=\"right\">" + totalProfit + "</td>");
+                else
+                    $("#dvDailyStatus table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+                var GridViewTable = $("#dvDailyStatus table:first tbody tr");
+                $(GridViewTable).each(function () {
+                    var managerCellText = $(this).find("td").eq(2).text();
+                    var managerCellNewData = "<a href='javascript://' style='color:purple'>" + managerCellText + "</a>";
+                    $(this).find("td").eq(2).empty();
+                    $(this).find("td").eq(2).append(managerCellNewData);
+                });
+
+                $("#dvDailyStatus table:first tbody tr td a").bind("click", function () {
+
+                    $("#dvSingleCCSDetails").html("");
+                    $("#dvPopUpMessage").html("");
+                    loading(); // loading
+                    setTimeout(function () { // then show popup, deley in .5 second
+                        loadPopup(); // function show popup 
+                    }, 500); // .5 second
+
+                    var managerID = $(this).text();
+                    $("#hdnManagerId").val(managerID);
+                    $("#dvSingleCCSDetails").JqGrid({
+                        url: "DailyStatusMoreMktMgr",
+                        columnHeaders: ["Sr. No.", "Agent ID", "Agent Name", "Agent Profit"],
+                        columnAttributes: [{ columnName: "SRNO", align: "center" },
+                                               { columnName: "AGENT_ID", align: "center" },
+                                               { columnName: "CCS_LOCATION", align: "left" },
+                                               { columnName: "NEW_PROFIT", align: "right"}],
+                        postDataDetails: [{ strManagerID: managerID },
+                                              { strSelectedDate: $("#hdnDailyStatusDate").val()}],
+                        themeUrl: "../Content/JqGrid/JqGridTheme.css",
+                        gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+                        pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+                        sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+                        success: function (repData) {
+
+                            $("#dvSingleCCSDetails table:first tbody tr").each(function () {
+                                var allTds = $(this).find("td");
+
+                                var tempProfit = parseFloat($(allTds[3]).html());
+
+                                if (tempProfit < 0)
+                                    $(allTds[3]).attr("style", "color:red");
+                                else
+                                    $(allTds[3]).removeAttr("style");
+                            });
+
+
+                            if ($("#dvSingleCCSDetails table:first tfoot tr").length > 0)
+                                $("#dvSingleCCSDetails table:first tfoot tr").html("");
+                            else
+                                $("#dvSingleCCSDetails table:first tfoot").append("<tr></tr>");
+
+                            var totalProfit = 0;
+
+                            for (var i = 0; i < repData.length; i++) {
+                                totalProfit += parseFloat(repData[i]["NEW_PROFIT"]);
+                            }
+
+                            totalProfit = (totalProfit).toFixed(2);
+
+                            if (totalProfit >= 0)
+                                $("#dvSingleCCSDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td align=\"right\">" + totalProfit + "</td>");
+                            else
+                                $("#dvSingleCCSDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+                            closeloading();
+
+
+
+                            $("#dvSingleCCSDetails table > tbody  > tr").each(function () {
+                                var MemberCellText = $(this).find("td").eq(1).text();
+                                var MemberCellNewData = "<a href='javascript://' style='color:purple'>" + MemberCellText + "</a>";
+                                $(this).find("td").eq(1).empty();
+                                $(this).find("td").eq(1).append(MemberCellNewData);
+                            });
+                            $("#dvPopUpMessage").html("For Manager ID : " + managerID);
+                            $("#dvSingleCCSDetails table:first tbody tr td a").bind("click", function () {
+
+                                $("#dvSingleMgrDetails").html("");
+                                $("#dvPopUpMessage1").html("");
+                                loading(); // loading
+                                setTimeout(function () { // then show popup, deley in .5 second
+                                    loadPopup1(); // function show popup 
+                                }, 500); // .5 second
+
+
+                                var strAgentID = $(this).text();
+                                $("#dvSingleMgrDetails").JqGrid({
+                                    url: "DailyStatusForMember",
+                                    columnHeaders: ["Member ID", "Profit"],
+                                    columnAttributes: [{ columnName: "MEMBER", align: "center" },
+                                               { columnName: "NEW_PROFIT", align: "right"}],
+                                    postDataDetails: [{ strManagerID: $("#hdnManagerId").val() },
+                                    { strAgentId: $(this).text() },
+                                              { strSelectedDate: $("#hdnDailyStatusDate").val()}],
+                                    themeUrl: "../Content/JqGrid/JqGridTheme.css",
+                                    gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+                                    pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+                                    sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+                                    success: function (repData) {
+
+                                        $("#dvSingleMgrDetails table:first tbody tr").each(function () {
+                                            var allTds = $(this).find("td");
+
+                                            var tempProfit = parseFloat($(allTds[1]).html());
+
+                                            if (tempProfit < 0)
+                                                $(allTds[1]).attr("style", "color:red");
+                                            else
+                                                $(allTds[1]).removeAttr("style");
+                                        });
+
+
+                                        if ($("#dvSingleMgrDetails table:first tfoot tr").length > 0)
+                                            $("#dvSingleMgrDetails table:first tfoot tr").html("");
+                                        else
+                                            $("#dvSingleMgrDetails table:first tfoot").append("<tr></tr>");
+
+                                        var totalProfit = 0;
+
+                                        for (var i = 0; i < repData.length; i++) {
+                                            totalProfit += parseFloat(repData[i]["NEW_PROFIT"]);
+                                        }
+
+                                        totalProfit = (totalProfit).toFixed(2);
+
+                                        if (totalProfit >= 0)
+                                            $("#dvSingleMgrDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td align=\"right\">" + totalProfit + "</td>");
+                                        else
+                                            $("#dvSingleMgrDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td style=\"color:red\" align=\"right\">" + totalProfit + "</td>");
+
+
+                                        closeloading();
+
+                                        $("#dvPopUpMessage1").html("For Agent ID : " + strAgentID);
+                                    },
+                                    errorMsg: function (repError) {
+                                        if (repError == "Session Expired") {
+                                            window.location = "/Login.mvc/Index";
+                                        }
+                                        else {
+                                            $("#dvSingleMgrDetails").html(repError);
+                                            closeloading();
+                                        }
+                                    }
+                                });
+                            });
+
+
+                        },
+                        errorMsg: function (repError) {
+                            if (repError == "Session Expired") {
+                                window.location = "/Login.mvc/Index";
+                            }
+                            else {
+                                $("#dvSingleCCSDetails").html(repError);
+                                closeloading();
+                            }
+                        }
+                    });
+                });
+
+                $("#loader").hide();
+            },
+            errorMsg: function (repError) {
+                if (repError == "Session Expired") {
+                    window.location = "/Login.mvc/Index";
+                }
+                else {
+                    $("#dvDailyStatus").html(repError);
+                    $("#loader").hide();
+                }
+            }
+        });
+    }
+
+    function forAgent() {
+        $("#dvDailyStatus").JqGrid({
+            url: "DailyStatusData",
+            columnHeaders: ["Sr. No.", "Location", "Agent ID", "Profit"],
+            columnAttributes: [{ columnName: "SRNO", dataType: "int", align: "center" },
+                { columnName: "LOCATION", align: "left" },
+                { columnName: "AGENT_ID", align: "center" },
+                { columnName: "PROFIT", align: "center"}],
+            postDataDetails: [{ strSelectedDate: $("#txtSelectDate").val()}],
+            themeUrl: "../Content/JqGrid/JqGridTheme.css",
+            gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+            pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+            sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+            success: function (repData) {
+
+                $("#dvDailyStatus table:first tbody tr").each(function () {
+                    var allTds = $(this).find("td");
+
+                    var tempProfit = parseFloat($(allTds[3]).html());
+
+                    if (tempProfit < 0)
+                        $(allTds[3]).attr("style", "color:red");
+                    else
+                        $(allTds[3]).removeAttr("style");
+                });
+
+                if ($("#dvDailyStatus table:first tfoot tr").length > 0)
+                    $("#dvDailyStatus table:first tfoot tr").html("");
+                else
+                    $("#dvDailyStatus table:first tfoot").append("<tr></tr>");
+
+                var totalProfit = 0;
+
+                for (var i = 0; i < repData.length; i++) {
+                    totalProfit += parseFloat(repData[i]["PROFIT"]);
+                }
+
+                totalProfit = (totalProfit).toFixed(2);
+
+                $("#dvDailyStatus table:first tfoot tr").append("<td align=\"center\">Total</td><td></td><td></td><td align=\"right\">" + totalProfit + "</td>");
+
+                var GridViewTable = $("#dvDailyStatus table:first tbody tr");
+                $(GridViewTable).each(function () {
+                    var agentCellText = $(this).find("td").eq(2).text();
+                    var agentCellNewData = "<a href='javascript://' style='color:purple'>" + agentCellText + "</a>";
+                    $(this).find("td").eq(2).empty();
+                    $(this).find("td").eq(2).append(agentCellNewData);
+                });
+
+                $("#dvDailyStatus table:first tbody tr td a").bind("click", function () {
+
+                    $("#dvSingleCCSDetails").html("");
+                    loading(); // loading
+                    setTimeout(function () { // then show popup, deley in .5 second
+                        loadPopup(); // function show popup 
+                    }, 500); // .5 second
+
+                    $("#dvSingleCCSDetails").JqGrid({
+                        url: "DailyStatusMore",
+                        columnHeaders: ["Member ID", "Profit"],
+                        columnAttributes: [{ columnName: "MEMBER", align: "center" },
+                                               { columnName: "TOTALPROFIT", align: "right"}],
+                        postDataDetails: [{ strAgentId: $(this).text() },
+                                              { strSelectedDate: $("#hdnDailyStatusDate").val()}],
+                        themeUrl: "../Content/JqGrid/JqGridTheme.css",
+                        gridStyle: { headerClass: "GridHead", footerClass: "GridFooter", rowClass: "NormalRow", alternativeRowClass: "AlternativeRow" },
+                        pageSetting: { allowPager: true, pageSize: 10, nextPrevTab: false },
+                        sortSetting: { allowSorting: true, sortColumn: "SRNO", sortDirection: "asc" },
+                        success: function (repData) {
+
+                            $("#dvSingleCCSDetails table:first tbody tr").each(function () {
+                                var allTds = $(this).find("td");
+
+                                var tempProfit = parseFloat($(allTds[1]).html());
+
+                                if (tempProfit < 0)
+                                    $(allTds[1]).attr("style", "color:red");
+                                else
+                                    $(allTds[1]).removeAttr("style");
+                            });
+
+
+                            if ($("#dvSingleCCSDetails table:first tfoot tr").length > 0)
+                                $("#dvSingleCCSDetails table:first tfoot tr").html("");
+                            else
+                                $("#dvSingleCCSDetails table:first tfoot").append("<tr></tr>");
+
+                            var totalProfit = 0;
+
+                            for (var i = 0; i < repData.length; i++) {
+                                totalProfit += parseFloat(repData[i]["TOTALPROFIT"]);
+                            }
+
+                            totalProfit = (totalProfit).toFixed(2);
+
+                            $("#dvSingleCCSDetails table:first tfoot tr").append("<td align=\"center\">Total</td><td align=\"right\">" + totalProfit + "</td>");
+                            closeloading();
+                        },
+                        errorMsg: function (repError) {
+                            if (repError == "Session Expired") {
+                                window.location = "/Login.mvc/Index";
+                            }
+                            else {
+                                $("#dvSingleCCSDetails").html(repError);
+                                closeloading();
+                            }
+                        }
+                    });
+                });
+
+                $("#loader").hide();
+            },
+            errorMsg: function (repError) {
+                if (repError == "Session Expired") {
+                    window.location = "/Login.mvc/Index";
+                }
+                else {
+                    $("#dvDailyStatus").html(repError);
+                    $("#loader").hide();
+                }
+            }
+        });
+    }
+
+    $("#btnSearch").click(function () {
+        var FDate = $("#txtSelectDate").val();
+        var valide = true;
+
+        if (FDate == "") {
+            $("#txtSelectDate").removeClass();
+            $("#txtSelectDate").addClass("input-validation-error  hasDatepicker");
+            $("#txtSelectDate").focus();
+            valide = false;
+        }
+
+        if (valide) {
+
+            $("#hdnDailyStatusDate").val(FDate);
+            $("#loader").show();
+
+            var memberType = $("#hdnFieldMemberType").val();
+
+            switch (memberType) {
+                case "A":
+                case "P":
+                    //  For Agent
+                    forAgent();
+                    break;
+                case "M":
+                    //  For Manager
+                    forManager();
+                    break;
+                case "K":
+                    //  For Marketing
+                    forMarketing();
+                    break;
+            }
+        }
+    });
+
+    /* event for close the popup */
+    $("div.close").hover(
+					function () {
+					    $('span.ecs_tooltip').show();
+					},
+					function () {
+					    $('span.ecs_tooltip').hide();
+					}
+				);
+
+    $("div.close").click(function () {
+        disablePopup();  // function close pop up
+    });
+
+    $(this).keyup(function (event) {
+        if (event.which == 27) { // 27 is 'Ecs' in the keyboard
+            disablePopup();  // function close pop up
+        }
+    });
+
+    $("div.backgroundPopup").click(function () {
+        disablePopup();  // function close pop up
+    });
+
+
+    /************** start: functions. **************/
+    function loading() {
+        $("div.loader2").show();
+    }
+    function closeloading() {
+        $("div.loader2").fadeOut('normal');
+    }
+
+    var popupStatus = 0; // set value
+
+    function loadPopup() {
+        if (popupStatus == 0) { // if value is 0, show popup
+            $(".toPopup").fadeIn(0500); // fadein popup div
+            $(".backgroundPopup").css("opacity", "0.7"); // css opacity, supports IE7, IE8
+            $(".backgroundPopup").fadeIn(0001);
+            popupStatus = 1; // and set value to 1
+        }
+    }
+
+    function disablePopup() {
+        if (popupStatus == 1) { // if value is 1, close popup
+            $(".toPopup").fadeOut("normal");
+            $(".backgroundPopup").fadeOut("normal");
+            popupStatus = 0;  // and set value to 0
+        }
+    }
+    //For  Popup1
+    /* event for close the popup1 */
+    $("div.close1").hover(
+					function () {
+					    $('span.ecs_tooltip').show();
+					},
+					function () {
+					    $('span.ecs_tooltip').hide();
+					}
+				);
+
+    $("div.close1").click(function () {
+        disablePopup1();  // function close pop up
+    });
+
+    $(this).keyup(function (event) {
+        if (event.which == 27) { // 27 is 'Ecs' in the keyboard
+            disablePopup1();  // function close pop up
+        }
+    });
+
+    $("div.backgroundPopup1").click(function () {
+        disablePopup1();  // function close pop up
+    });
+    //Open popup1
+    var popupStatus1 = 0;
+    function loadPopup1() {
+        if (popupStatus1 == 0) { // if value is 0, show popup
+            $(".toPopup1").fadeIn(0500); // fadein popup div
+            $(".backgroundPopup1").css("opacity", "0.7"); // css opacity, supports IE7, IE8
+            $(".backgroundPopup1").fadeIn(0001);
+            popupStatus1 = 1; // and set value to 1
+        }
+    }
+
+    function disablePopup1() {
+        if (popupStatus == 1) { // if value is 1, close popup
+            $(".toPopup1").fadeOut("normal");
+            $(".backgroundPopup1").fadeOut("normal");
+            popupStatus1 = 0;  // and set value to 0
+        }
+    }
+});

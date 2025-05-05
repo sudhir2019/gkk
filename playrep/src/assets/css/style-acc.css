@@ -1,0 +1,12 @@
+.ui-accordion-header{
+	background:#E0F4F6;
+	border:none;
+}
+.ui-accordion-content{
+	border:none;
+}
+.ui-accordion-header-icon{
+	position:absolute;
+	right:0;
+	top:0;
+}

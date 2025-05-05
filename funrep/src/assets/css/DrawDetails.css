@@ -1,0 +1,109 @@
+.welcome-details{
+	float:left;
+	width:100%;
+	height:auto;
+	font-family:Arial,Helvetica,sans-serif;
+	margin:10px 0 0 0;	
+}
+.welcome-details p{
+	margin:0;
+	float:left;
+	width:100%;
+}
+.welcome-details p span{
+	font-size:14px !important;
+	color:#0000ff;
+}
+.wel-msg
+{
+    color:#990000 !important;
+    width:100%;
+    text-align:center;
+}
+.welcome-details p strong{
+	color:#0000c0;
+}
+
+td
+{
+  border:none !important;    
+}
+
+.fun-r {
+    display: block !important;
+    float: left !important;
+    height: auto !important;
+    margin: 0 4px 0 0 !important;
+    padding: 0 !important;
+    position: relative !important;
+    width: 350px !important;
+}
+.fun-r table {
+    float: left !important;
+    width: 100% !important;
+}
+.fun-r table thead td {
+    background: #a27b3a none repeat scroll 0 0 !important;
+    color: #fff !important;
+    padding: 4px 0 !important;
+}
+.fun-r table thead td h2 {
+    color: #000000;
+    padding: 5px;
+    margin:0;
+}
+.fun-r-header {
+    height: 430px !important;
+    margin: 0 !important;
+    padding: 4px 0 0 !important;
+    width: auto !important;
+}
+.fun-r-body {
+    height: 430px !important;
+    margin: 0 !important;
+    overflow: auto !important;
+    padding: 4px 0 0 !important;
+    width: auto !important;
+}
+.fun-r-body td {
+    text-align: center !important;
+    border:1px solid #000 !important;
+}
+.heading {
+    background: #a27b3a none repeat scroll 0 0 !important;
+    color: #fff !important;
+}
+.Newheading {
+    background: #a27b3a none repeat scroll 0 0 !important;
+    color: #000000 !important;
+    font-weight: bold;
+}
+.alt-row {
+    background: #efe2ce none repeat scroll 0 0 !important;
+    padding: 4px 0 !important;
+}
+.GridStyle {
+    border-spacing: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.MDMessageDiv {
+    margin: 5% 0 0 5%;
+    opacity: 0.9;
+    position: absolute;
+    width: 80%;
+    z-index: 5;
+}
+#div1 input[type=submit]{
+    background-color: DodgerBlue;
+    border-style: none;
+    color: White;
+    font-weight: bold;
+    height: 22px;
+    width: 105px;
+    position:absolute;
+    right:44px;
+    top:114px;
+}
+
+
