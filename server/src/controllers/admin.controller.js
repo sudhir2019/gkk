@@ -626,19 +626,30 @@ const creditTransfer = async (req, res) => {
             if (senderWallet.walletBalance < transferAmount) {
                 return res.status(400).json({ success: false, message: "Insufficient balance." });
             }
-
-            // ✅ Create a new transaction record
-            const transaction = new UserTransaction({
-                userId: userId,
-                toUserId: toUserId,
-                amount: transferAmount,
+            // ✅ Perform balance update
+            senderWallet.walletBalance -= transferAmount;
+            receiverWallet.walletBalance += transferAmount;
+            // ✅ Create transaction records
+            const senderTransaction = new UserTransaction({
+                userId,
+                toUserId,
+                amount: -transferAmount,
                 transactionType: "transfer",
-                status: "pending",
-                transactionMessage: `Admin ${senderWallet.username} adjusted ${transferAmount} transfer to ${receiverWallet.username} pending`,
+                status: "completed",
+                transactionMessage: `Admin ${senderWallet.username} transferred ${transferAmount} to User ${receiverWallet.username}`,
             });
-            await transaction.save();
-            senderWallet.walletTransaction.push(transaction._id);
-            receiverWallet.walletTransaction.push(transaction._id);
+            const receiverTransaction = new UserTransaction({
+                userId: toUserId,
+                toUserId: userId,
+                amount: +transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `User ${receiverWallet.username} received ${transferAmount} from Admin ${senderWallet.username}`,
+            });
+            await senderTransaction.save();
+            await receiverTransaction.save();
+            senderWallet.walletTransaction.push(senderTransaction._id);
+            receiverWallet.walletTransaction.push(receiverTransaction._id);
             await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username}  pending`, "not Requst", "credit", "not Requst", null);
 
             await senderWallet.save();
@@ -714,8 +725,8 @@ const creditAdjust = async (req, res) => {
                         message: "Insufficient balance in self's wallet.",
                     });
                 }
-                // sender.walletBalance -= adjustAmount;
-                // receiver.walletBalance += adjustAmount;
+                sender.walletBalance -= adjustAmount;
+                receiver.walletBalance += adjustAmount;
             } else if (transactionType === "credit") {
                 if (receiver.walletBalance < adjustAmount) {
                     return res.status(400).json({
@@ -723,8 +734,8 @@ const creditAdjust = async (req, res) => {
                         message: "Insufficient balance in admin's wallet.",
                     });
                 }
-                // sender.walletBalance += adjustAmount;
-                // receiver.walletBalance -= adjustAmount;
+                sender.walletBalance += adjustAmount;
+                receiver.walletBalance -= adjustAmount;
             }
 
             // ✅ Create a new transaction record
@@ -733,15 +744,15 @@ const creditAdjust = async (req, res) => {
                 toUserId: toUserId,
                 amount: adjustAmount,
                 transactionType: transactionType,
-                status: "pending",
+                status: "completed",
                 transactionMessage:
-                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username} pending`,
+                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
             });
 
             await transaction.save();
             sender.walletTransaction.push(transaction._id);
             receiver.walletTransaction.push(transaction._id);
-            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username} pending`, "not Requst", "adjusted", "not Requst", null);
+            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not Requst", "adjusted", "not Requst", null);
             // ✅ Save the updated wallets
             await sender.save();
             await receiver.save();
@@ -881,7 +892,7 @@ const fetchAdminById = async (id) => {
 };
 
 const fetchAdminChildren = async (id, sort, sortOrder) => {
-    return await User.find({ refId: id, isDeleted: false })
+    return await User.find({ refId: id, role: "superareamanager", isDeleted: false })
         .populate("refId")
         .populate("parentId")
         .populate("subordinates")
@@ -1320,7 +1331,7 @@ const creditTransferAdminChildren = async (req, res) => {
         }
 
         // ✅ Validate superdistributor's password
-        const UserAuth = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false })
+        const UserAuth = await User.findOne({ _id: authUser._id, userStatus: true, isDeleted: false })
         const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
         const matchPassword = await UserAuth.comparePassword(password); // Password
         const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
@@ -1332,22 +1343,31 @@ const creditTransferAdminChildren = async (req, res) => {
                 return res.status(400).json({ success: false, message: "Insufficient balance." });
             }
 
-
-            // ✅ Create a new transaction record
-            const transaction = new UserTransaction({
-                userId: userId,
-                toUserId: toUserId,
-                amount: transferAmount,
+            // ✅ Perform balance update
+            senderWallet.walletBalance -= transferAmount;
+            receiverWallet.walletBalance += transferAmount;
+            // ✅ Create transaction records
+            const senderTransaction = new UserTransaction({
+                userId,
+                toUserId,
+                amount: -transferAmount,
                 transactionType: "transfer",
-                status: "pending",
-                transactionMessage:
-                    transactionMessage || `superareamanager ${sender.username} adjusted ${adjustAmount} transfer to ${receiver.username} pending`,
+                status: "completed",
+                transactionMessage: `Admin ${senderWallet.username} transferred ${transferAmount} to User ${receiverWallet.username}`,
             });
-            await transaction.save();
-
-            senderWallet.walletTransaction.push(transaction._id);
-            receiverWallet.walletTransaction.push(transaction._id);
-            await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username} pending`, "not Requst", "credit", "not Requst", null);
+            const receiverTransaction = new UserTransaction({
+                userId: toUserId,
+                toUserId: userId,
+                amount: +transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `User ${receiverWallet.username} received ${transferAmount} from Admin ${senderWallet.username}`,
+            });
+            await senderTransaction.save();
+            await receiverTransaction.save();
+            senderWallet.walletTransaction.push(senderTransaction._id);
+            receiverWallet.walletTransaction.push(receiverTransaction._id);
+            await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username}  pending`, "not Requst", "credit", "not Requst", null);
 
             await senderWallet.save();
             await receiverWallet.save();
@@ -1402,7 +1422,7 @@ const creditAdjustAdminChildren = async (req, res) => {
         }
 
         // ✅ Validate superdistributor's password
-        const UserAuth = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false })
+        const UserAuth = await User.findOne({ _id: authUser._id, userStatus: true, isDeleted: false })
         const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
         const matchPassword = await UserAuth.comparePassword(password); // Password
         const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
@@ -1414,38 +1434,37 @@ const creditAdjustAdminChildren = async (req, res) => {
                 if (sender.walletBalance < adjustAmount) {
                     return res.status(400).json({
                         success: false,
-                        message: "Insufficient balance in superdistributor's wallet.",
+                        message: "Insufficient balance in self's wallet.",
                     });
                 }
-                // sender.walletBalance -= adjustAmount;
-                // receiver.walletBalance += adjustAmount;
+                sender.walletBalance -= adjustAmount;
+                receiver.walletBalance += adjustAmount;
             } else if (transactionType === "credit") {
                 if (receiver.walletBalance < adjustAmount) {
                     return res.status(400).json({
                         success: false,
-                        message: "Insufficient balance in receiver's wallet.",
+                        message: "Insufficient balance in admin's wallet.",
                     });
                 }
-                // sender.walletBalance += adjustAmount;
-                // receiver.walletBalance -= adjustAmount;
+                sender.walletBalance += adjustAmount;
+                receiver.walletBalance -= adjustAmount;
             }
 
-            // ✅ Create a new transaction record
             // ✅ Create a new transaction record
             const transaction = new UserTransaction({
                 userId: userId,
                 toUserId: toUserId,
                 amount: adjustAmount,
                 transactionType: transactionType,
-                status: "pending",
+                status: "completed",
                 transactionMessage:
-                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username} pending`,
+                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
             });
 
             await transaction.save();
             sender.walletTransaction.push(transaction._id);
             receiver.walletTransaction.push(transaction._id);
-            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username} pending`, "not Requst", "adjusted", "not Requst", null);
+            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not Requst", "adjusted", "not Requst", null);
             // ✅ Save the updated wallets
             await sender.save();
             await receiver.save();

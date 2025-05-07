@@ -81,7 +81,7 @@ const createPlayers = async (req, res) => {
         } = req.body;
 
         // ✅ Validate required fields
-        if (!firstName || !lastName  || !country || !state || !city || !address) {
+        if (!firstName || !lastName || !country || !state || !city || !address) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields. Please provide firstName, lastName, phone, email, country, state, city, and address."
@@ -228,7 +228,7 @@ const getAllPlayers = async (req, res) => {
                 .set('strictPopulate', false)
                 .exec();
 
-        // console.log(supers);
+            // console.log(supers);
 
             let userList = [];
 
@@ -631,56 +631,60 @@ const creditTransfer = async (req, res) => {
         }
 
         // ✅ Validate Master's password
-        const authUser = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false });
+        const authUser = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false });
         if (!authUser) {
             return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
-        const matchPin = await authUser.comparePin(Number(password));
-        const matchPassword = await authUser.comparePassword(password);
-        const matchPinPassword = await authUser.comparePinPassword(password);
+        const UserAuth = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
+            // ✅ Check sender's balance
+            if (senderWallet.walletBalance < transferAmount) {
+                return res.status(400).json({ success: false, message: "Insufficient balance." });
+            }
+            // ✅ Perform balance update
+            senderWallet.walletBalance -= transferAmount;
+            receiverWallet.walletBalance += transferAmount;
+            // ✅ Create transaction records
+            const senderTransaction = new UserTransaction({
+                userId,
+                toUserId,
+                amount: -transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `Admin ${senderWallet.username} transferred ${transferAmount} to User ${receiverWallet.username}`,
+            });
+            const receiverTransaction = new UserTransaction({
+                userId: toUserId,
+                toUserId: userId,
+                amount: +transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `User ${receiverWallet.username} received ${transferAmount} from Admin ${senderWallet.username}`,
+            });
+            await senderTransaction.save();
+            await receiverTransaction.save();
+            senderWallet.walletTransaction.push(senderTransaction._id);
+            receiverWallet.walletTransaction.push(receiverTransaction._id);
+            await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username}  pending`, "not Requst", "credit", "not Requst", null);
 
-        if (!(matchPin || matchPassword || matchPinPassword)) {
+            await senderWallet.save();
+            await receiverWallet.save();
+            // ✅ Fetch updated user list
+            const users = await fetchusers();
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully transferred ${transferAmount} to Player ${receiverWallet.username}`,
+                data: { users, receiverWallet },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Check sender's balance
-        if (senderWallet.walletBalance < transferAmount) {
-            return res.status(400).json({ success: false, message: "Insufficient balance." });
-        }
-
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: transferAmount,
-            transactionType: "transfer",
-            status: "pending",
-            transactionMessage: `Master ${senderWallet.username} transferred ${transferAmount} to ${receiverWallet.username} (pending)`,
-        });
-
-        await transaction.save();
-
-        // ✅ Update sender & receiver transaction history
-        senderWallet.walletTransaction.push(transaction._id);
-        receiverWallet.walletTransaction.push(transaction._id);
-
-        await senderWallet.save();
-        await receiverWallet.save();
-
-        // ✅ Log transaction activity
-        await logUserActivity(req, userId, `${senderWallet.username} credited ${transferAmount} to ${receiverWallet.username} (pending)`, "not request", "credit", "not request", null);
-
-        // ✅ Fetch updated list of Masters
-        // ✅ Fetch updated user list
-        const users = await fetchusers();
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully transferred ${transferAmount} to Player ${receiverWallet.username}`,
-            data: { users, receiverWallet },
-        });
-
     } catch (error) {
         console.error("Transaction Error:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -724,66 +728,69 @@ const creditAdjust = async (req, res) => {
         }
 
         // ✅ Validate Master's password
-        const authUser = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false });
+        const authUser = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false });
         if (!authUser) {
             return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
-        const matchPin = await authUser.comparePin(Number(password));
-        const matchPassword = await authUser.comparePassword(password);
-        const matchPinPassword = await authUser.comparePinPassword(password);
+        const UserAuth = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
 
-        if (!(matchPin || matchPassword || matchPinPassword)) {
+            // ✅ Process credit/debit adjustments
+            if (transactionType === "debit") {
+                if (sender.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in self's wallet.",
+                    });
+                }
+                sender.walletBalance -= adjustAmount;
+                receiver.walletBalance += adjustAmount;
+            } else if (transactionType === "credit") {
+                if (receiver.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in admin's wallet.",
+                    });
+                }
+                sender.walletBalance += adjustAmount;
+                receiver.walletBalance -= adjustAmount;
+            }
+
+            // ✅ Create a new transaction record
+            const transaction = new UserTransaction({
+                userId: userId,
+                toUserId: toUserId,
+                amount: adjustAmount,
+                transactionType: transactionType,
+                status: "completed",
+                transactionMessage:
+                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
+            });
+
+            await transaction.save();
+            sender.walletTransaction.push(transaction._id);
+            receiver.walletTransaction.push(transaction._id);
+            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not Requst", "adjusted", "not Requst", null);
+            // ✅ Save the updated wallets
+            await sender.save();
+            await receiver.save();
+
+            // ✅ Fetch updated user list
+            const users = await fetchusers();
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
+                data: { users, receiver },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Process credit/debit adjustments
-        if (transactionType === "debit") {
-            if (sender.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in Master's wallet." });
-            }
-            sender.walletBalance -= adjustAmount;
-            receiver.walletBalance += adjustAmount;
-        } else if (transactionType === "credit") {
-            if (receiver.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in receiver's wallet." });
-            }
-            sender.walletBalance += adjustAmount;
-            receiver.walletBalance -= adjustAmount;
-        }
-
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: adjustAmount,
-            transactionType,
-            status: "completed",
-            transactionMessage: transactionMessage || `Master ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
-        });
-
-        await transaction.save();
-
-        // ✅ Update sender & receiver transaction history
-        sender.walletTransaction.push(transaction._id);
-        receiver.walletTransaction.push(transaction._id);
-
-        // ✅ Log adjustment activity
-        await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not request", "adjusted", "not request", null);
-
-        // ✅ Save the updated wallets
-        await sender.save();
-        await receiver.save();
-
-        // ✅ Fetch updated user list
-        const users = await fetchusers();
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
-            data: { users, receiver },
-        });
-
     } catch (error) {
         console.error("Error during credit adjustment:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });

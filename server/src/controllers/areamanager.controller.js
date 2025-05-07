@@ -513,7 +513,7 @@ const deleteAreamanager = async (req, res) => {
 };
 
 const creditTransfer = async (req, res) => {
-    const { userId, password, transferAmount, toUserId } = req.body;
+    const { userId, password, transferAmount, toUserId, authUser } = req.body;
 
     // ✅ Validate required fields
     if (!userId || !toUserId || !transferAmount) {
@@ -544,56 +544,60 @@ const creditTransfer = async (req, res) => {
         }
 
         // ✅ Validate Areamanager's password
-        const authUser = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false });
+        const authUser = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false });
         if (!authUser) {
             return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
-        const matchPin = await authUser.comparePin(Number(password));
-        const matchPassword = await authUser.comparePassword(password);
-        const matchPinPassword = await authUser.comparePinPassword(password);
+        const UserAuth = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
+            // ✅ Check sender's balance
+            if (senderWallet.walletBalance < transferAmount) {
+                return res.status(400).json({ success: false, message: "Insufficient balance." });
+            }
+            // ✅ Perform balance update
+            senderWallet.walletBalance -= transferAmount;
+            receiverWallet.walletBalance += transferAmount;
+            // ✅ Create transaction records
+            const senderTransaction = new UserTransaction({
+                userId,
+                toUserId,
+                amount: -transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `Admin ${senderWallet.username} transferred ${transferAmount} to User ${receiverWallet.username}`,
+            });
+            const receiverTransaction = new UserTransaction({
+                userId: toUserId,
+                toUserId: userId,
+                amount: +transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `User ${receiverWallet.username} received ${transferAmount} from Admin ${senderWallet.username}`,
+            });
+            await senderTransaction.save();
+            await receiverTransaction.save();
+            senderWallet.walletTransaction.push(senderTransaction._id);
+            receiverWallet.walletTransaction.push(receiverTransaction._id);
+            await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username}  pending`, "not Requst", "credit", "not Requst", null);
 
-        if (!(matchPin || matchPassword || matchPinPassword)) {
+            await senderWallet.save();
+            await receiverWallet.save();
+            // ✅ Fetch updated Areamanagers list
+            const Areamanagers = await fetchAreamanagers();
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully transferred ${transferAmount} to User ${receiverWallet.username}`,
+                data: { Areamanagers, receiverWallet },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Check sender's balance
-        if (senderWallet.walletBalance < transferAmount) {
-            return res.status(400).json({ success: false, message: "Insufficient balance." });
-        }
-        senderWallet.walletBalance -= transferAmount;
-
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: transferAmount,
-            transactionType: "transfer",
-            status: "pending",
-            transactionMessage: `Areamanager ${senderWallet.username} transferred ${transferAmount} to ${receiverWallet.username} (pending)`,
-        });
-
-        await transaction.save();
-
-        // ✅ Update sender & receiver transaction history
-        senderWallet.walletTransaction.push(transaction._id);
-        receiverWallet.walletTransaction.push(transaction._id);
-
-        await senderWallet.save();
-        await receiverWallet.save();
-
-        // ✅ Log transaction activity
-        await logUserActivity(req, userId, `${senderWallet.username} credited ${transferAmount} to ${receiverWallet.username} (pending)`, "not request", "credit", "not request", null);
-
-        // ✅ Fetch updated Areamanagers list
-        const Areamanagers = await fetchAreamanagers();
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully transferred ${transferAmount} to User ${receiverWallet.username}`,
-            data: { Areamanagers, receiverWallet },
-        });
-
     } catch (error) {
         console.error("Transaction Error:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
@@ -601,7 +605,7 @@ const creditTransfer = async (req, res) => {
 };
 
 const creditAdjust = async (req, res) => {
-    const { userId, toUserId, password, adjustAmount, transactionType, transactionMessage } = req.body;
+    const { userId, toUserId, password, adjustAmount, authUser, transactionType, transactionMessage } = req.body;
 
     // ✅ Validate required fields
     if (!userId || !toUserId || !adjustAmount || !transactionType || !password) {
@@ -640,63 +644,68 @@ const creditAdjust = async (req, res) => {
         }
 
         // ✅ Validate Areamanager's password
-        const authUser = await User.findOne({ _id: req.userAuth._id, userStatus: true, isDeleted: false });
+        const authUser = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false });
         if (!authUser) {
             return res.status(403).json({ success: false, message: "Unauthorized action." });
         }
 
-        const matchPin = await authUser.comparePin(Number(password));
-        const matchPassword = await authUser.comparePassword(password);
-        const matchPinPassword = await authUser.comparePinPassword(password);
+        const UserAuth = await User.findOne({ _id: req.query.id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
 
-        if (!(matchPin || matchPassword || matchPinPassword)) {
+            // ✅ Process credit/debit adjustments
+            if (transactionType === "debit") {
+                if (sender.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in self's wallet.",
+                    });
+                }
+                sender.walletBalance -= adjustAmount;
+                receiver.walletBalance += adjustAmount;
+            } else if (transactionType === "credit") {
+                if (receiver.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in admin's wallet.",
+                    });
+                }
+                sender.walletBalance += adjustAmount;
+                receiver.walletBalance -= adjustAmount;
+            }
+
+            // ✅ Create a new transaction record
+            const transaction = new UserTransaction({
+                userId: userId,
+                toUserId: toUserId,
+                amount: adjustAmount,
+                transactionType: transactionType,
+                status: "completed",
+                transactionMessage:
+                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
+            });
+
+            await transaction.save();
+            sender.walletTransaction.push(transaction._id);
+            receiver.walletTransaction.push(transaction._id);
+            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not Requst", "adjusted", "not Requst", null);
+            // ✅ Save the updated wallets
+            await sender.save();
+            await receiver.save();
+
+            const Areamanagers = await fetchAreamanagers();
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
+                data: { Areamanagers, receiver },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Process credit/debit adjustments
-        if (transactionType === "debit") {
-            if (sender.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in Areamanager's wallet." });
-            }
-            sender.walletBalance -= adjustAmount;
-        } else if (transactionType === "credit") {
-            if (receiver.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in receiver's wallet." });
-            }
-            receiver.walletBalance -= adjustAmount;
-        }
-
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: adjustAmount,
-            transactionType,
-            status: "pending",
-            transactionMessage: transactionMessage || `Areamanager ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
-        });
-
-        await transaction.save();
-
-        // ✅ Update sender & receiver transaction history
-        sender.walletTransaction.push(transaction._id);
-        receiver.walletTransaction.push(transaction._id);
-
-        // ✅ Log adjustment activity
-        await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not request", "adjusted", "not request", null);
-
-        // ✅ Save the updated wallets
-        await sender.save();
-        await receiver.save();
-
-        // ✅ Fetch updated Areamanager list
-        const Areamanagers = await fetchAreamanagers();
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
-            data: { Areamanagers, receiver },
-        });
 
     } catch (error) {
         console.error("Error during credit adjustment:", error);
@@ -1232,7 +1241,7 @@ const toggleAreamanagerChildrenStatus = async (req, res) => {
 
 const creditTransferAreamanagerChildren = async (req, res) => {
     const { id, childrenId } = req.params;
-    const { userId, password, transferAmount, toUserId } = req.body;
+    const { userId, password, transferAmount, toUserId, authUser } = req.body;
 
     // ✅ Validate required fields
     if (!userId || !toUserId || !transferAmount) {
@@ -1250,63 +1259,74 @@ const creditTransferAreamanagerChildren = async (req, res) => {
     }
 
     try {
-        // ✅ Fetch sender (Areamanager)
-        const sender = await User.findOne({ _id: userId, userStatus: true, isDeleted: false });
-        if (!sender) {
-            return res.status(403).json({ success: false, message: "Sender not authorized or inactive." });
+        // ✅ Fetch sender (superdistributor)
+        const senderWallet = await User.findOne({ _id: userId, userStatus: true, isDeleted: false });
+        if (!senderWallet) {
+            return res.status(403).json({
+                success: false,
+                message: "Only active users can perform credit transfers.",
+            });
         }
 
         // ✅ Fetch receiver (Must be active and not deleted)
-        const receiver = await User.findOne({ _id: toUserId, isDeleted: false });
-        if (!receiver) {
+        const receiverWallet = await User.findOne({ _id: toUserId, isDeleted: false });
+        if (!receiverWallet) {
             return res.status(404).json({ success: false, message: "Receiver not found or inactive." });
         }
 
-        // ✅ Validate sender's password
-        const senderAuth = await User.findById(req.userAuth._id);
-        const matchPin = await senderAuth.comparePin(Number(password));
-        const matchPassword = await senderAuth.comparePassword(password);
-        const matchPinPassword = await senderAuth.comparePinPassword(password);
+        // ✅ Validate superdistributor's password
+        const UserAuth = await User.findOne({ _id: authUser._id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
 
-        if (!matchPin && !matchPassword && !matchPinPassword) {
+            // ✅ Check sender's balance
+            if (senderWallet.walletBalance < transferAmount) {
+                return res.status(400).json({ success: false, message: "Insufficient balance." });
+            }
+
+            // ✅ Perform balance update
+            senderWallet.walletBalance -= transferAmount;
+            receiverWallet.walletBalance += transferAmount;
+            // ✅ Create transaction records
+            const senderTransaction = new UserTransaction({
+                userId,
+                toUserId,
+                amount: -transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `Admin ${senderWallet.username} transferred ${transferAmount} to User ${receiverWallet.username}`,
+            });
+            const receiverTransaction = new UserTransaction({
+                userId: toUserId,
+                toUserId: userId,
+                amount: +transferAmount,
+                transactionType: "transfer",
+                status: "completed",
+                transactionMessage: `User ${receiverWallet.username} received ${transferAmount} from Admin ${senderWallet.username}`,
+            });
+            await senderTransaction.save();
+            await receiverTransaction.save();
+            senderWallet.walletTransaction.push(senderTransaction._id);
+            receiverWallet.walletTransaction.push(receiverTransaction._id);
+            await logUserActivity(req, userId, `${senderWallet.username} credit ${transferAmount} to ${receiverWallet.username}  pending`, "not Requst", "credit", "not Requst", null);
+
+            await senderWallet.save();
+            await receiverWallet.save();
+
+            // ✅ Fetch updated admin children data
+            const retailersChildren = await fetchAreamanagerChildren(id);
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully transferred ${transferAmount} to User ${receiverWallet.username}`,
+                data: { retailersChildren, receiverWallet },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Check sender's balance
-        if (sender.walletBalance < transferAmount) {
-            return res.status(400).json({ success: false, message: "Insufficient balance." });
-        }
-        sender.walletBalance -= transferAmount;
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: transferAmount,
-            transactionType: "transfer",
-            status: "pending",
-            transactionMessage: `Master ${sender.username} transferred ${transferAmount} to ${receiver.username} (pending).`,
-        });
-        await transaction.save();
-
-        // ✅ Update sender and receiver's wallet transaction history
-        sender.walletTransaction.push(transaction._id);
-        receiver.walletTransaction.push(transaction._id);
-
-        // ✅ Log user activity
-        await logUserActivity(req, userId, `${sender.username} credited ${transferAmount} to ${receiver.username} (pending)`, "credit");
-
-        // ✅ Save updated user data
-        await Promise.all([sender.save(), receiver.save()]);
-
-        // ✅ Fetch updated admin children data
-        const AdminChildren = await fetchAreamanagerChildren(id);
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully transferred ${transferAmount} to User ${receiver.username}`,
-            data: { AdminChildren, receiver },
-        });
-
     } catch (error) {
         console.error("Transaction Error:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
@@ -1314,7 +1334,7 @@ const creditTransferAreamanagerChildren = async (req, res) => {
 };
 
 const creditAdjustAreamanagerChildren = async (req, res) => {
-    const { userId, toUserId, password, adjustAmount, transactionType, transactionMessage } = req.body;
+    const { userId, toUserId, password, adjustAmount, transactionType, authUser, transactionMessage } = req.body;
     const { id, childrenId } = req.params;
 
     // ✅ Validate required fields
@@ -1350,61 +1370,65 @@ const creditAdjustAreamanagerChildren = async (req, res) => {
             return res.status(404).json({ success: false, message: "Receiver not found or inactive." });
         }
 
-        // ✅ Validate sender's password
-        const senderAuth = await User.findById(req.userAuth._id);
-        const matchPin = await senderAuth.comparePin(Number(password));
-        const matchPassword = await senderAuth.comparePassword(password);
-        const matchPinPassword = await senderAuth.comparePinPassword(password);
+        // ✅ Validate superdistributor's password
+        const UserAuth = await User.findOne({ _id: authUser._id, userStatus: true, isDeleted: false })
+        const matchPin = await UserAuth.comparePin(Number(password)); // PIN entered
+        const matchPassword = await UserAuth.comparePassword(password); // Password
+        const matchPinPassword = await UserAuth.comparePinPassword(password); // PIN+Password
+        // ✅ Validate admin's password
+        if (matchPin || matchPassword || matchPinPassword) {
 
-        if (!matchPin && !matchPassword && !matchPinPassword) {
+            // ✅ Process credit/debit adjustments
+            if (transactionType === "debit") {
+                if (sender.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in self's wallet.",
+                    });
+                }
+                sender.walletBalance -= adjustAmount;
+                receiver.walletBalance += adjustAmount;
+            } else if (transactionType === "credit") {
+                if (receiver.walletBalance < adjustAmount) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient balance in admin's wallet.",
+                    });
+                }
+                sender.walletBalance += adjustAmount;
+                receiver.walletBalance -= adjustAmount;
+            }
+
+            // ✅ Create a new transaction record
+            const transaction = new UserTransaction({
+                userId: userId,
+                toUserId: toUserId,
+                amount: adjustAmount,
+                transactionType: transactionType,
+                status: "completed",
+                transactionMessage:
+                    transactionMessage || `Admin ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username}`,
+            });
+
+            await transaction.save();
+            sender.walletTransaction.push(transaction._id);
+            receiver.walletTransaction.push(transaction._id);
+            await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} to ${receiver.username}`, "not Requst", "adjusted", "not Requst", null);
+            // ✅ Save the updated wallets
+            await sender.save();
+            await receiver.save();
+
+            // ✅ Fetch updated admin children data
+            const retailersChildren = await fetchAreamanagerChildren(id);
+
+            return res.status(200).json({
+                success: true,
+                message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
+                data: { retailersChildren, sender, receiver },
+            });
+        } else {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
-
-        // ✅ Process credit/debit adjustments
-        if (transactionType === "debit") {
-            if (sender.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in sender's wallet." });
-            }
-            sender.walletBalance -= adjustAmount;
-        } else if (transactionType === "credit") {
-            if (receiver.walletBalance < adjustAmount) {
-                return res.status(400).json({ success: false, message: "Insufficient balance in receiver's wallet." });
-            }
-            receiver.walletBalance -= adjustAmount;
-        }
-
-        // ✅ Create a new transaction record
-        const transaction = new UserTransaction({
-            userId,
-            toUserId,
-            amount: adjustAmount,
-            transactionType,
-            status: "pending",
-            transactionMessage: transactionMessage ||
-                `Master ${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username} (pending).`,
-        });
-
-        await transaction.save();
-
-        // ✅ Update sender and receiver's wallet transaction history
-        sender.walletTransaction.push(transaction._id);
-        receiver.walletTransaction.push(transaction._id);
-
-        // ✅ Log user activity
-        await logUserActivity(req, userId, `${sender.username} adjusted ${adjustAmount} ${transactionType} to ${receiver.username} (pending)`, "adjusted");
-
-        // ✅ Save updated user data
-        await Promise.all([sender.save(), receiver.save()]);
-
-        // ✅ Fetch updated admin children data
-        const AdminChildren = await fetchAreamanagerChildren(id);
-
-        return res.status(200).json({
-            success: true,
-            message: `Successfully adjusted ${adjustAmount} ${transactionType} to User ${receiver.username}`,
-            data: { AdminChildren, sender, receiver },
-        });
-
     } catch (error) {
         console.error("Error during credit adjustment:", error);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
