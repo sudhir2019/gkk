@@ -18,7 +18,7 @@ const useTimer = (adminId, gameId) => {
     const handleTimer = (data) => {
       // console.log(data);
       if (data?.gameId === gameId) {
-       
+
         setTimer(data.time); // update only this game's timer
       }
     };

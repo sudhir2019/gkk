@@ -1,8 +1,8 @@
-const { default: mongoose, mongo } = require("mongoose");
+const { default: mongoose } = require("mongoose");
 const { User } = require("../models/user.model");
 const { Ticket } = require("../models/ticket.model");
 const UserTransaction = require("../models/userTransaction.model");
-const { Percentage } = require("../models/percentage.model");
+const Percentage  = require("../models/percentage.model");
 const Game = require("../models/game.model");
 
 const findallusersbyrole = async (req, res) => {
@@ -20,6 +20,7 @@ const findallusersbyrole = async (req, res) => {
         });
     }
 }
+
 const transactionreport = async (req, res) => {
     const { status, id, date, type, currentid, role } = req.query;
 
@@ -35,7 +36,7 @@ const transactionreport = async (req, res) => {
 
     try {
         // Build the query object
-      
+
         const allData = await getAllusersByroleWise(role, currentid);
 
         let query = {}; // Initialize an empty query object
@@ -74,22 +75,22 @@ const transactionreport = async (req, res) => {
         if (dateObj) {
             // Assuming you want to filter transactions created on the exact given date.
             // You need to adjust the time to the start of the day and the end of the day for comparison.
-            
+
             // Start of the day: 00:00:00
             const startOfDay = new Date(dateObj.setHours(0, 0, 0, 0));
-            
+
             // End of the day: 23:59:59
             const endOfDay = new Date(dateObj.setHours(23, 59, 59, 999));
-            
+
             // Filter transactions between the start and end of the day
-            query.createdAt = { 
+            query.createdAt = {
                 $gte: startOfDay,  // Greater than or equal to the start of the day
                 $lte: endOfDay    // Less than or equal to the end of the day
             };
         }
-        
 
-console.log(query);
+
+        // console.log(query);
         const data = await UserTransaction.find(query)
             .populate('userId') // Populate 'userId' reference
             .populate('toUserId', 'username walletBalance') // Populate 'toUserId' reference
@@ -101,14 +102,13 @@ console.log(query);
             data: data
         });
     } catch (error) {
-        console.error(error);
+        // console.error(error);
         res.status(500).send({
             success: false,
             message: 'Error retrieving transactions'
         });
     }
 };
-
 
 const turnoverreport = async (req, res) => {
     // const role = "admin";
@@ -334,7 +334,6 @@ const turnoverreport = async (req, res) => {
 
 }
 
-
 async function GetPlayPoints(role, userole, id, fromdate, todate) {
     let playedData = 0;
 
@@ -350,6 +349,7 @@ async function GetPlayPoints(role, userole, id, fromdate, todate) {
 
     return playedData;
 }
+
 async function GetPlayPointsByUser(id, fromdate, todate) {
     let playedData = 0;
 
@@ -359,7 +359,6 @@ async function GetPlayPointsByUser(id, fromdate, todate) {
 
     return playedData;
 }
-
 
 async function GetWinPoints(role, userole, id, fromdate, todate) {
     let winData = 0;
@@ -374,8 +373,6 @@ async function GetWinPoints(role, userole, id, fromdate, todate) {
 
     return winData;
 }
-
-
 
 async function GetWinPointsByUser(id, fromdate, todate) {
     let winData = 0;
@@ -419,8 +416,6 @@ async function ascrtcommision(playpoints, id, role) {
 
     return com;
 }
-
-
 
 async function descsupercom(playpoints, id, role) {
     var com = 0;
@@ -468,6 +463,7 @@ async function descsupercom3(playpoints, id, role) {
 
     return com;
 }
+
 async function descdistcom2(playpoints, id, role) {
     var com = 0;
 
@@ -793,7 +789,7 @@ async function getAllusersByroleWise(role, id) {
         return allData;
 
     } catch (error) {
-        console.error("Error in getUsersRoleWise:", error);
+        // console.error("Error in getUsersRoleWise:", error);
     }
 }
 
@@ -975,7 +971,7 @@ async function getCalculateDataByTree(role, id) {
 
 
     } catch (error) {
-        console.error("Error in getUsersRoleWise:", error);
+        // console.error("Error in getUsersRoleWise:", error);
     }
 }
 
@@ -1080,7 +1076,7 @@ async function getGameStats(gameId, adminId) {
         // Return the aggregated result
         return result[0]; // Since we're grouping by gameId and adminId, there should be only one result
     } catch (error) {
-        console.error('Error in getGameStats:', error);
+        // console.error('Error in getGameStats:', error);
         return { totalPlaypoints: 0, totalWinpoints: 0 }; // Return default in case of error
     }
 }
@@ -1112,7 +1108,7 @@ async function getGameStatsUsingMap(gameId, adminId, fromdate, todate) {
         return { totalPlaypoints, totalWinpoints };
 
     } catch (error) {
-        console.error('Error in getGameStatsUsingMap:', error);
+        // console.error('Error in getGameStatsUsingMap:', error);
         return { totalPlaypoints: 0, totalWinpoints: 0 }; // Return default in case of error
     }
 }

@@ -209,15 +209,15 @@ async function addBalance(req, res) {
 
 async function addCustomResult(req, res) {
     try {
-        const { adminId, gameId, result,color,type, boosterValue } = req.body;
+        const { adminId, gameId, result, color, type, boosterValue } = req.body;
 
         // Step 1: Create a new document in the "Upcome" collection
         const upcome = new Upcome({
             adminId: adminId,
             gameId: gameId,
             drawno: result,
-            color:color,
-            type:type,
+            color: color,
+            type: type,
             booster: boosterValue,
             status: 0 // Assuming 0 represents an initial or default status
         });
@@ -522,7 +522,7 @@ async function liveData(req, res) {
                 })
             );
 
-           const colors = ["k","c","f","l"]
+            const colors = ["k", "c", "f", "l"]
 
 
             const dataColors = await Promise.all(
@@ -530,8 +530,8 @@ async function liveData(req, res) {
                     const findsingle = await GetTotal(obj, adminId, gameId);
                     return {
                         ...obj,
-                        label :obj,
-                        drawno :obj,
+                        label: obj,
+                        drawno: obj,
                         image: `/assets/games/${obj}.png`,
                         sum: findsingle ? findsingle : 0
                     };
@@ -542,15 +542,15 @@ async function liveData(req, res) {
             const datCardType = ["under", "bahar"];
 
             const dataCardTypes = await Promise.all(
-              datCardType.map(async (drawno) => {
-                const findsingle = await GetTotal(drawno, adminId, gameId);
-                // console.log(drawno)
-                return {
-                  label: drawno.charAt(0).toUpperCase() + drawno.slice(1), // Optional: Capitalize for UI
-                  drawno: drawno,
-                  sum: findsingle || 0
-                };
-              })
+                datCardType.map(async (drawno) => {
+                    const findsingle = await GetTotal(drawno, adminId, gameId);
+                    // console.log(drawno)
+                    return {
+                        label: drawno.charAt(0).toUpperCase() + drawno.slice(1), // Optional: Capitalize for UI
+                        drawno: drawno,
+                        sum: findsingle || 0
+                    };
+                })
             );
             let totalGameCollection = await CalculateTotalCollection(adminId, gameId);
             const foundPercentage = await Percentage.find({
@@ -572,16 +572,16 @@ async function liveData(req, res) {
         }
 
 
-        
+
 
 
         if (gameId === "qZicXikT") {
             // console.log(adminId, gameId);
             const titli = Array.from({ length: 12 }, (_, i) => {
                 const drawno = i + 1; // 1 to 13
-               
+
                 return {
-                    label:  drawno.toString(), // Use mapped label or the number itself
+                    label: drawno.toString(), // Use mapped label or the number itself
                     drawno: drawno.toString(),
                     image: `/assets/games/titli/${drawno}.png`,
                     color: "",
@@ -642,7 +642,7 @@ async function liveData(req, res) {
         }
 
 
-        
+
 
 
 

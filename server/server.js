@@ -49,7 +49,7 @@ const socketOrigin = process.env.SOCKET_ORIGIN;
 const io = socketIO(http, {
   cors: {
     origin: (origin, callback) => {
-      const allowedOrigins = ["https://singhjyotiadmin.life", "https://fun-rep.pro", "https://play-rep.pro", "http://localhost:5173", "http://localhost:5174","http://127.0.0.1:5500"];
+      const allowedOrigins = ["https://rgnlife.in", "https://greport.pro", "https://planetg.co", "http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5500"];
 
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, origin); // ✅ Set the specific origin
@@ -97,90 +97,90 @@ io.on('connection', async (socket) => {
   }
 
   // Handle timerData event
-//   socket.on('timerData', async (data) => {
-//     try {
-//       const { adminId, gameId } = data;
+  //   socket.on('timerData', async (data) => {
+  //     try {
+  //       const { adminId, gameId } = data;
 
-//       if (!gameId) {
-//         console.error('⛔ No gameId found in data.');
-//         return;
-//       }
+  //       if (!gameId) {
+  //         console.error('⛔ No gameId found in data.');
+  //         return;
+  //       }
 
-//       // Get game data based on adminId and gameId
-//       const percentageData = await Percentage.findOne({ adminId: new mongoose.Types.ObjectId(adminId), gameId: gameId }).exec();
+  //       // Get game data based on adminId and gameId
+  //       const percentageData = await Percentage.findOne({ adminId: new mongoose.Types.ObjectId(adminId), gameId: gameId }).exec();
 
-//       if (!percentageData) {
-//         console.log('Percentage data not found');
-//         return;
-//       }
+  //       if (!percentageData) {
+  //         console.log('Percentage data not found');
+  //         return;
+  //       }
 
-//       const gameData = await Game.findOne({ gameId: gameId }).populate('timeId').exec();
-//       if (!gameData) {
-//         console.log('Game data not found');
-//         return;
-//       }
+  //       const gameData = await Game.findOne({ gameId: gameId }).populate('timeId').exec();
+  //       if (!gameData) {
+  //         console.log('Game data not found');
+  //         return;
+  //       }
 
-//       const timeCount = gameData?.timeId[0]?.timecount;
+  //       const timeCount = gameData?.timeId[0]?.timecount;
 
-//       // Clear any existing timer for this gameId
-//       if (gameTimers.has(gameId)) {
-//         clearInterval(gameTimers.get(gameId));  // Stop the existing timer
-//         gameTimers.delete(gameId);  // Remove from map
-//         console.log(`✅ Cleared existing timer for game ${gameId}`);
-//       }
+  //       // Clear any existing timer for this gameId
+  //       if (gameTimers.has(gameId)) {
+  //         clearInterval(gameTimers.get(gameId));  // Stop the existing timer
+  //         gameTimers.delete(gameId);  // Remove from map
+  //         console.log(`✅ Cleared existing timer for game ${gameId}`);
+  //       }
 
-//       // Start new timer based on timeCount
-//       if (timeCount === 60) {
-       
-//         runTimer1(socket, gameId, timeCount);  // Start 60-second timer
-//       } else if (timeCount === 120) {
-      
-//         runTimer2(socket, gameId, timeCount);  // Start 120-second timer
-//       }
+  //       // Start new timer based on timeCount
+  //       if (timeCount === 60) {
 
-//     } catch (error) {
-//       console.error('Error in socket timer:', error);
-//       socket.emit('timerError', 'An error occurred while processing the timer data.');
-//     }
-//   });
+  //         runTimer1(socket, gameId, timeCount);  // Start 60-second timer
+  //       } else if (timeCount === 120) {
+
+  //         runTimer2(socket, gameId, timeCount);  // Start 120-second timer
+  //       }
+
+  //     } catch (error) {
+  //       console.error('Error in socket timer:', error);
+  //       socket.emit('timerError', 'An error occurred while processing the timer data.');
+  //     }
+  //   });
 
 
-socket.on('timerData', async (data) => {
-  try {
-    const { adminId, gameId } = data;
+  socket.on('timerData', async (data) => {
+    try {
+      const { adminId, gameId } = data;
 
-    if (!gameId) {
-      console.error('⛔ No gameId found in data.');
-      return;
-    }
-
-    socket.join(gameId); // ✅ Join the room for this gameId
-
-    // Fetch required data
-    const percentageData = await Percentage.findOne({ adminId: new mongoose.Types.ObjectId(adminId), gameId: gameId }).exec();
-    const gameData = await Game.findOne({ gameId: gameId }).populate('timeId').exec();
-
-    if (!percentageData || !gameData) {
-      console.log('Required game or percentage data not found');
-      return;
-    }
-
-    const timeCount = gameData?.timeId[0]?.timecount;
-
-    // ✅ Only start timer if one doesn't already exist for this gameId
-    if (!gameTimers.has(gameId)) {
-      if (timeCount === 60) {
-        runTimer1(io, gameId, timeCount);  // Now uses io, not socket
-      } else if (timeCount === 120) {
-        runTimer2(io, gameId, timeCount);
+      if (!gameId) {
+        console.error('⛔ No gameId found in data.');
+        return;
       }
-    }
 
-  } catch (error) {
-    console.error('Error in socket timer:', error);
-    socket.emit('timerError', 'An error occurred while processing the timer data.');
-  }
-});
+      socket.join(gameId); // ✅ Join the room for this gameId
+
+      // Fetch required data
+      const percentageData = await Percentage.findOne({ adminId: new mongoose.Types.ObjectId(adminId), gameId: gameId }).exec();
+      const gameData = await Game.findOne({ gameId: gameId }).populate('timeId').exec();
+
+      if (!percentageData || !gameData) {
+        console.log('Required game or percentage data not found');
+        return;
+      }
+
+      const timeCount = gameData?.timeId[0]?.timecount;
+
+      // ✅ Only start timer if one doesn't already exist for this gameId
+      if (!gameTimers.has(gameId)) {
+        if (timeCount === 60) {
+          runTimer1(io, gameId, timeCount);  // Now uses io, not socket
+        } else if (timeCount === 120) {
+          runTimer2(io, gameId, timeCount);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error in socket timer:', error);
+      socket.emit('timerError', 'An error occurred while processing the timer data.');
+    }
+  });
 
 
 
@@ -197,46 +197,47 @@ socket.on('timerData', async (data) => {
 
     // Set new interval for game data
     const intervalId = setInterval(async () => {
-    // clearInterval(intervalId);
+      // clearInterval(intervalId);
       const fresh = await getGameData(adminId, gameId);
       socket.emit("responseData", fresh);
     }, 1000);
 
     gameIntervals.set(socket.id, intervalId);  // Store the new interval for game data
   });
-  
-  
-  
-  
-     socket.on("checkStatus", async ({ userId, deviceId }) => {
+
+
+
+
+  socket.on("checkStatus", async ({ userId, deviceId }) => {
     try {
-      // Update the user's deviceId
-    //   const updateResult = await User.updateOne(
-    //     { _id: new mongoose.Types.ObjectId(userId) },
-    //     { $set: { deviceId: deviceId } }
-    //   );
-  
-      // Fetch the user's login status after update
-      const user = await User.findById(userId).select("isLoggedIn deviceId");
-  
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return socket.emit("statusResponse", { error: "Invalid user ID" });
+      }
+
+      const userObjectId = new mongoose.Types.ObjectId(userId);
+
+      // Optional: Update the user's deviceId
+      // await User.updateOne({ _id: userObjectId }, { $set: { deviceId } });
+
+      const user = await User.findById(userObjectId).select("isLoggedIn deviceId");
+
       if (!user) {
         return socket.emit("statusResponse", { error: "User not found" });
       }
-  
-      // Emit both updated deviceId and login status
+
       socket.emit("statusResponse", {
         isLoggedIn: user.isLoggedIn,
         deviceId: user.deviceId
       });
-  
+
     } catch (error) {
       console.error("Error checking user status:", error);
       socket.emit("statusResponse", { error: "Internal server error" });
     }
   });
-  
-  
-  
+
+
+
 
   // Handle disconnection of socket
   socket.on('disconnect', async () => {
@@ -258,29 +259,29 @@ socket.on('timerData', async (data) => {
     }
 
     // Clear game timer for specific game if socket was involved in one
-//   if (gameTimers.has(gameId)) {
-//   clearInterval(gameTimers.get(gameId));  // Clear the previous interval
-//   gameTimers.delete(gameId);  // Delete the reference to the previous interval
-//   //console.log(`✅ Cleared previous timer for game ${gameId}`);
-// }
+    //   if (gameTimers.has(gameId)) {
+    //   clearInterval(gameTimers.get(gameId));  // Clear the previous interval
+    //   gameTimers.delete(gameId);  // Delete the reference to the previous interval
+    //   //console.log(`✅ Cleared previous timer for game ${gameId}`);
+    // }
 
 
-const rooms = Array.from(socket.rooms);
-  rooms.forEach(async (room) => {
-    if (room !== socket.id) { // Skip the default room (socket.id)
-      const socketsInRoom = await io.in(room).allSockets();
-      if (socketsInRoom.size === 0) {
-        // No more clients in this game room
-        if (gameTimers.has(room)) {
-          clearInterval(gameTimers.get(room));
-          gameTimers.delete(room);
-          console.log(`🧹 Timer for game ${room} cleared on last disconnect.`);
+    const rooms = Array.from(socket.rooms);
+    rooms.forEach(async (room) => {
+      if (room !== socket.id) { // Skip the default room (socket.id)
+        const socketsInRoom = await io.in(room).allSockets();
+        if (socketsInRoom.size === 0) {
+          // No more clients in this game room
+          if (gameTimers.has(room)) {
+            clearInterval(gameTimers.get(room));
+            gameTimers.delete(room);
+            console.log(`🧹 Timer for game ${room} cleared on last disconnect.`);
+          }
         }
       }
-    }
-  });
-  
-  
+    });
+
+
 
 
   });
@@ -305,7 +306,7 @@ const rooms = Array.from(socket.rooms);
 //   // socket.emit("timer", { gameId, time: formatted, type: "timer1" });  // Emit clearly
 //   //console.log(`🔵 [${gameId}] Timer1: ${formatted}`);
 // io.to(gameId).emit("timer", { gameId, time: formatted, type: "timer1" });
-  
+
 //     if (remainingTime < 0) {
 //       clearInterval(interval);
 //      // gameTimers.delete(gameId);
@@ -818,7 +819,7 @@ async function getPercentageData(adminId, gameId) {
     }));
 
 
-     dataCache.set(cacheKey, formattedData, 1); // Cache for 30 seconds
+    dataCache.set(cacheKey, formattedData, 1); // Cache for 30 seconds
     return formattedData;
   } catch (error) {
     console.error("Error fetching percentage data:", error);

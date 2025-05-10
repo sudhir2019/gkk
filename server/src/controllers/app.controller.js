@@ -20,9 +20,40 @@ const generateticketnumber = () => {
     return gameId;
 };
 
+
+
+async function generateGameBalanceWithUserId(games, userId, adminId) {
+    try {
+        await Promise.all(games.map(async (game) => {
+            const existing = await UserBalance.findOne({
+                userId: new mongoose.Types.ObjectId(userId),
+                gameId: game.gameId,
+                adminId: new mongoose.Types.ObjectId(adminId)
+            }).exec();
+
+            if (!existing) {
+                const newBalance = new UserBalance({
+                    winBalance: 0,
+                    userId: new mongoose.Types.ObjectId(userId),
+                    gameId: game.gameId,
+                    adminId: new mongoose.Types.ObjectId(adminId)
+                });
+
+                await newBalance.save();
+            }
+        }));
+    } catch (error) {
+        console.error('Error creating game balance:', error);
+        throw error;
+    }
+}
+
+
+
+
 async function login(req, res) {
     try {
-        const { username, password,deviceId } = req.body;
+        const { username, password, deviceId } = req.body;
         const roles = ['superadmin', 'admin', 'superareamanager', 'areamanager', 'master', 'player'];
 
         // Find user by username
@@ -78,11 +109,12 @@ async function login(req, res) {
 
 
 
-       const result = await User.updateOne(
-                { _id: userFound._id },
-                { $set: { isLoggedIn: true, deviceId: deviceId } }
-            );
+        const result = await User.updateOne(
+            { _id: userFound._id },
+            { $set: { isLoggedIn: true, deviceId: deviceId } }
+        );
 
+        await generateGameBalanceWithUserId(findAdminId?.games, userFound._id, findAdminId?._id);
         return res.status(200).json({
             message: "Login successful",
             success: true,
@@ -215,7 +247,7 @@ async function createbet(req, res) {
 
 
         for (let i = 0; i < draws.length; i++) {
-            const { drawno, drawqty, drawtotal,label } = draws[i];  // Destructure draw details from each draw object
+            const { drawno, drawqty, drawtotal, label } = draws[i];  // Destructure draw details from each draw object
 
             // Create a new draw object using data from the request
             const newDraw = new Draw({
@@ -690,7 +722,7 @@ async function cancel(req, res) {
 //         }
 
 //       const winBalance = parseFloat(userBalance.winBalance,2).toFixed(2) || 0;
- 
+
 //         return res.status(200).json({
 //             success: true,
 //             winamount: winBalance
@@ -784,17 +816,24 @@ async function win(req, res) {
         const rawWinBalance = userBalance.winBalance || 0;
         const winBalance = parseFloat(parseFloat(rawWinBalance).toFixed(2));
 
-      
-            // Update all matching draws
-            // await Draw.updateMany(
-            //   { gameid: gameId, userid: userObjectId },
-            //   { $set: { betok: winBalance <= 0 } }
 
-            // );
-         
+        // Update all matching draws
+        // await Draw.updateMany(
+        //   { gameid: gameId, userid: userObjectId },
+        //   { $set: { betok: winBalance <= 0 } }
+
+        // );
+
+
+        const data = await Result.find({ gameid: gameId, status: 1 })
+            .sort({ _id: -1 }) // Sort by newest first
+            .limit(1)
+            .lean() // Convert Mongoose docs to plain JS objects (better performance)
+            .exec();
         return res.status(200).json({
             success: true,
-            winamount: winBalance
+            winamount: winBalance,
+            resultData: data
         });
 
     } catch (error) {
@@ -824,7 +863,7 @@ async function take(req, res) {
 
         const userBalance = await UserBalance.findOne({ userId: userObjectId, gameId: gameId }).exec();
         const winBalance = userBalance ? Number(userBalance.winBalance) || 0 : 0;
-        
+
         const newBalance = walletBalance + winBalance;
 
         // Update user's wallet balance
@@ -836,7 +875,7 @@ async function take(req, res) {
         await Draw.updateMany(
             { gameid: gameId, userid: userObjectId },
             { $set: { betok: true } }
-          );
+        );
 
 
         // Reset winBalance for this game
@@ -863,26 +902,95 @@ async function take(req, res) {
 
 
 
+// async function lastresults(req, res) {
+//     try {
+//         const { adminId, gameId } = req.query;
+
+//         // Validate gameId (ensure it's provided)
+//         if (!gameId || !adminId) {
+//             return res.status(400).send({
+//                 success: false,
+//                 message: "gameId and adminId is required"
+//             });
+//         }
+
+//         // Fetch last 12 results, sorted in DESC order
+//         const rawData = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
+//             .sort({ _id: -1 }) // Sort by newest first
+//             .limit(10)
+//             .lean() // Convert Mongoose docs to plain JS objects (better performance)
+//             .exec();
+
+
+
+//               const ascendingData = rawData.map((result) => {
+//             // If booster is 2, set random to 0, otherwise use result.randomValues
+//                 const random = result.booster === 2 ? 0 : result.randomValues;
+//                 return {
+//                     drawno: result.drawno,
+//                     color: result.color,
+//                     joker: result.joker,
+//                     type: result.type,
+//                     booster: result.booster,
+//                     randomvalue:random
+//                 };
+//         });
+
+
+//         const data = ascendingData.reverse(); // Oldest to newest among the last 10
+
+
+
+
+
+//         res.status(200).send({
+//             success: true,
+//             data
+//         });
+//     } catch (error) {
+//         console.error("Error fetching last results:", error);
+//         res.status(500).send({
+//             success: false,
+//             message: "Internal Server Error"
+//         });
+//     }
+// }
+
+
 async function lastresults(req, res) {
     try {
         const { adminId, gameId } = req.query;
 
-        // Validate gameId (ensure it's provided)
+        // Validate gameId and adminId
         if (!gameId || !adminId) {
             return res.status(400).send({
                 success: false,
-                message: "gameId and adminId is required"
+                message: "gameId and adminId are required"
             });
         }
 
-        // Fetch last 12 results, sorted in DESC order
-        const ascendingData = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
-            .sort({ _id: -1 }) // Sort by newest first
+        // Fetch last 10 results in descending order (newest first)
+        const rawData = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
+            .sort({ _id: -1 })
             .limit(10)
-            .lean() // Convert Mongoose docs to plain JS objects (better performance)
+            .lean()
             .exec();
 
-        const data = ascendingData.reverse(); // Oldest to newest among the last 10
+        // Process results
+        const processedResults = rawData.map((result) => {
+            const random = result.booster === 2 ? 0 : result.randomValues;
+            return {
+                drawno: result.drawno,
+                color: result.color,
+                joker: result.joker,
+                type: result.type,
+                booster: result.booster,
+                randomvalue: random
+            };
+        });
+
+        // Reverse to get oldest to newest among the last 10
+        const data = processedResults.reverse();
 
         res.status(200).send({
             success: true,
@@ -898,31 +1006,48 @@ async function lastresults(req, res) {
 }
 
 
+
+
 async function winresult(req, res) {
     try {
         const { adminId, gameId } = req.query;
 
-        // Validate gameId (ensure it's provided)
+        // Validate gameId and adminId
         if (!gameId || !adminId) {
             return res.status(400).send({
                 success: false,
-                message: "gameId and adminId is required"
+                message: "gameId and adminId are required"
             });
         }
 
-        // Fetch last 12 results, sorted in DESC order
-        const data = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
-            .sort({ _id: -1 }) // Sort by newest first
+        // Fetch the latest result
+        const rawData = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
+            .sort({ _id: -1 })
             .limit(1)
-            .lean() // Convert Mongoose docs to plain JS objects (better performance)
+            .lean()
             .exec();
-            
-            const values = [0,5, 10, 15];
-            const randomValue = values[Math.floor(Math.random() * values.length)];
+
+        const data = rawData.map((result) => {
+            // If booster is 2, set random to 0, otherwise use result.randomValues
+            const random = result.booster === 2 ? 0 : result.randomValues;
+            return {
+                drawno: result.drawno,
+                color: result.color,
+                joker: result.joker,
+                type: result.type,
+                booster: result.booster,
+                randomvalue: random
+            };
+        });
+
+        // Generate random wheelData
+        const values = [5, 10, 15];
+        const wheelData = values[Math.floor(Math.random() * values.length)];
 
         res.status(200).send({
             success: true,
-            data
+            data,
+            wheelData,
         });
     } catch (error) {
         console.error("Error fetching last results:", error);
@@ -1103,7 +1228,7 @@ async function lastfiveresult(req, res) {
 //                     }
 //                 }
 //             ]);
-            
+
 //         }
 
 
@@ -1332,6 +1457,53 @@ async function checkdeviceid(req, res) {
 }
 
 
+async function checkwheel(req, res) {
+    try {
+        const { adminId, gameId } = req.query;
+
+        // Validate gameId and adminId
+        if (!gameId || !adminId) {
+            return res.status(400).send({
+                success: false,
+                message: "gameId and adminId are required"
+            });
+        }
+
+        // Fetch the latest result
+        const rawData = await Result.find({ gameid: gameId, adminid: adminId, status: 1 })
+            .sort({ _id: -1 })
+            .limit(1)
+            .lean()
+            .exec();
+
+        if (!rawData || rawData.length === 0) {
+            return res.status(404).send({
+                success: false,
+                message: "No result found"
+            });
+        }
+
+        const result = rawData[0];
+        const random = result.booster === 2 ? 0 : result.randomValues;
+
+        // You can add wheelData generation logic here if needed
+
+        res.status(200).send({
+            success: true,
+            random
+        });
+
+    } catch (error) {
+        console.error("Error fetching wheelData:", error);
+        res.status(500).send({
+            success: false,
+            message: "Internal Server Error in wheelData"
+        });
+    }
+}
+
+
+
 
 
 module.exports = {
@@ -1355,6 +1527,6 @@ module.exports = {
     lastfiveresult,
     getBetData,
     getsocketid,
-    checkdeviceid
+    checkdeviceid,
+    checkwheel
 };
-

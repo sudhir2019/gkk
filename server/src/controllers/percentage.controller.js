@@ -439,4 +439,3 @@ module.exports = {
     updateWinpercentageBulk,
     loadGamesByAdmin,
 };
-

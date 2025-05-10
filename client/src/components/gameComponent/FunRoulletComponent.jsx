@@ -7,6 +7,7 @@ import api from '../../utils/axiosInstance';
 import useTimer from '../../hooks/admin/games/useTimer';
 import useGameData from '../../hooks/admin/games/useGameData';
 import { addBalance, addResult } from '../../stores/actions/liveActions';
+import TimerComponent from '../ui/TimerDisplay';
 
 function FunRoulletComponent({ adminId, gameId }) {
     const dispatch = useDispatch();
@@ -189,7 +190,8 @@ function FunRoulletComponent({ adminId, gameId }) {
                     </div>
 
                     <div className="col-md-4 mt-2 mb-24">
-                        <span className='text-xl mb-2' id="countdown">Timer: {timer}</span>
+                        {/* <span className='text-xl mb-2' id="countdown">Timer: {timer}</span> */}
+                        <TimerComponent timer={timer} />
                         <p>
                             <select name="boosterId" id="boosterId" className="browser-default custom-select" onChange={(e) => setBootserId(e.target.value)}>
                                 {Array.from({ length: 2 }, (_, index) => (

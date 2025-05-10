@@ -154,43 +154,43 @@ const funtarget = async (req, res) => {
             const remainingBalance = gameBalance - sendwin;
             baltestvalue = remainingBalance;
             // console.log(groupedDraws);
-            
-            
-           const drawPromises = [];
 
-// Fetch all draw quantities in parallel for drawnos 0-9
-for (let i = 0; i < 10; i++) {
-    const drawno = String(i);
-    drawPromises.push(
-        getDrawQtyByDrawNo(main.adminId, main.gameId, drawno).then(tt => {
-            const winqty = parseFloat(tt * 9); // Example: 20*9 = 180
-            const boosterLogic = winqty * setJoker; // Example: 900
 
-            // Check if the booster logic fits within the remaining balance
-            if (boosterLogic <= remainingBalance) {
-                arr1.push({ no: i, sum: boosterLogic });
-            } else {
-                arr2.push({ no: i, sum: boosterLogic });
+            const drawPromises = [];
+
+            // Fetch all draw quantities in parallel for drawnos 0-9
+            for (let i = 0; i < 10; i++) {
+                const drawno = String(i);
+                drawPromises.push(
+                    getDrawQtyByDrawNo(main.adminId, main.gameId, drawno).then(tt => {
+                        const winqty = parseFloat(tt * 9); // Example: 20*9 = 180
+                        const boosterLogic = winqty * setJoker; // Example: 900
+
+                        // Check if the booster logic fits within the remaining balance
+                        if (boosterLogic <= remainingBalance) {
+                            arr1.push({ no: i, sum: boosterLogic });
+                        } else {
+                            arr2.push({ no: i, sum: boosterLogic });
+                        }
+
+                        // Update the draw status
+                        return Draw.updateMany(
+                            {
+                                adminid: new mongoose.Types.ObjectId(main.adminId),
+                                gameid: main.gameId,
+                                status: 0,
+                                drawno: drawno
+                            },
+                            { $set: { status: 1 } }
+                        );
+                    }).catch(err => {
+                        console.error(`Error fetching draw quantity for drawno ${i}:`, err);
+                    })
+                );
             }
 
-            // Update the draw status
-            return Draw.updateMany(
-                {
-                    adminid: new mongoose.Types.ObjectId(main.adminId),
-                    gameid: main.gameId,
-                    status: 0,
-                    drawno: drawno
-                },
-                { $set: { status: 1 } }
-            );
-        }).catch(err => {
-            console.error(`Error fetching draw quantity for drawno ${i}:`, err);
-        })
-    );
-}
-
-// Wait for all draw quantity fetching to complete in parallel
-await Promise.all(drawPromises);
+            // Wait for all draw quantity fetching to complete in parallel
+            await Promise.all(drawPromises);
 
 
 
@@ -220,7 +220,7 @@ await Promise.all(drawPromises);
             //     const boosterLogic = winqty * setJoker; //900
 
             //     // console.log(boosterLogic,winqty,remainingBalance);
-               
+
             //         if (remainingBalance <= 0) {
             //             if (boosterLogic <= 0) {
             //                 arr1.push({ no: draw._id, sum: boosterLogic }); // safe zero-cost draw
@@ -235,7 +235,7 @@ await Promise.all(drawPromises);
             //                 arr2.push({ no: draw._id, sum: boosterLogic });
             //             }
             //         }
-                    
+
             //          // Normal logic when balance is positive
             //             // if (boosterLogic <= remainingBalance) {
             //             //     arr1.push({ no: draw._id, sum: boosterLogic });
@@ -247,10 +247,10 @@ await Promise.all(drawPromises);
             // }
 
             // const array_rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
-            
-            
-            console.log("arr1",arr1);
-            console.log("arr2",arr2);
+
+
+            console.log("arr1", arr1);
+            console.log("arr2", arr2);
 
 
 
@@ -270,27 +270,27 @@ await Promise.all(drawPromises);
                 // );
             } else if (arr2.length > 0) {
                 // Get all numbers 0–9
-                    // const allNumbers = Array.from({ length: 10 }, (_, i) => i);
-                    // // Extract numbers to exclude (from arr2)
-                    // const excludeNumbers = arr2.map(obj => obj.no);
-                    // // Filter out excluded numbers
-                    // const availableNumbers = allNumbers.filter(num => !excludeNumbers.includes(num));
-                    // // Pick a random number from what's left
-                    // if (availableNumbers.length > 0) {
-                    //     randomNumber = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
-                    // } else {
-                    //     // Fallback: all numbers are excluded, so just pick 0–9
-                    //     randomNumber = Math.floor(Math.random() * 10);
-                    // }
-                    
-                    
-                      const minSum = Math.min(...arr2.map(obj => obj.sum));
+                // const allNumbers = Array.from({ length: 10 }, (_, i) => i);
+                // // Extract numbers to exclude (from arr2)
+                // const excludeNumbers = arr2.map(obj => obj.no);
+                // // Filter out excluded numbers
+                // const availableNumbers = allNumbers.filter(num => !excludeNumbers.includes(num));
+                // // Pick a random number from what's left
+                // if (availableNumbers.length > 0) {
+                //     randomNumber = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+                // } else {
+                //     // Fallback: all numbers are excluded, so just pick 0–9
+                //     randomNumber = Math.floor(Math.random() * 10);
+                // }
+
+
+                const minSum = Math.min(...arr2.map(obj => obj.sum));
                 const lowestSumItems = arr2.filter(obj => obj.sum === minSum);
                 const randomItem = lowestSumItems[Math.floor(Math.random() * lowestSumItems.length)];
                 randomNumber = randomItem.no;
-                
-                console.log("minrandomnumber",randomNumber);
-                    
+
+                console.log("minrandomnumber", randomNumber);
+
 
 
             } else {
@@ -325,7 +325,7 @@ await Promise.all(drawPromises);
 
         }
         // if (ResultData) {
-            await sendWinFunTarget(randomNumber, setJoker, main.adminId, main.gameId, ResultData._id);
+        await sendWinFunTarget(randomNumber, setJoker, main.adminId, main.gameId, ResultData._id);
         // } else {
         //     console.error("Failed to get result document after upsert.");
         // }
@@ -406,7 +406,7 @@ async function sendWinFunTarget(resultNo, joker, adminId, gameId, resultId) {
         let winningAmount = 0;
 
         for (const draw of loadDraws) {
-              if (String(draw.drawno) === String(resultNo)) {
+            if (String(draw.drawno) === String(resultNo)) {
                 let win = parseFloat(draw.drawqty) * 9;
                 // Joker multiplier
                 win *= joker;
@@ -666,8 +666,8 @@ const funroullet = async (req, res) => {
                     no => !arrfound.some(item => item.no === no)
                 );
                 randomNumber = filteredExcludeNos[Math.floor(Math.random() * filteredExcludeNos.length)];
-                
-                
+
+
                 // const minSum = Math.min(...arr2.map(obj => obj.sum));
                 // const lowestItems = arr2.filter(obj => obj.sum === minSum);
                 // const randomItem = lowestItems[Math.floor(Math.random() * lowestItems.length)];
