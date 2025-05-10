@@ -9,7 +9,7 @@ const { Draw } = require("../models/draw.model");
 const Upcome = require("../models/upcome.model");
 const { Frequency } = require("../models/frequency.model");
 const UserBalance = require("../models/userbalance.model");
-const { clearbetok } = require("../actions/clearbetok");
+// const { clearbetok } = require("../actions/clearbetok");
 
 let ADMINID = process.env.ADMIN_ID ? process.env.ADMIN_ID.toString() : "";
 
@@ -119,27 +119,42 @@ const funtarget = async (req, res) => {
             await Promise.all(drawPromises);
 
             if (safeDraws.length > 0) {
-                const max = safeDraws.reduce((prev, curr) => (curr.sum > prev.sum ? curr : prev), safeDraws[0]);
-                randomNumber = max.no;
+                //console.log("safeDraws",safeDraws);
+                const maxSum = Math.max(...safeDraws.map(draw => draw.sum));
+
+                // Step 2: Filter draws that have the maximum sum
+                const maxDraws = safeDraws.filter(draw => draw.sum === maxSum);
+
+                // Step 3: Select a random one among those
+                const randomEntry = maxDraws[Math.floor(Math.random() * maxDraws.length)];
+                randomNumber = randomEntry.no;
+
+
             } else if (riskyDraws.length > 0) {
+                //console.log("riskyDraws",riskyDraws);
                 const minSum = Math.min(...riskyDraws.map(d => d.sum));
                 const lowest = riskyDraws.filter(d => d.sum === minSum);
                 const randomPick = lowest[Math.floor(Math.random() * lowest.length)];
                 randomNumber = randomPick.no;
             } else {
+                //console.log("no any draws");
                 randomNumber = Math.floor(Math.random() * 10); // fallback
             }
 
-             const values = [0, 5, 10, 15];
-             const randomValue = values[Math.floor(Math.random() * values.length)];
-             
+            const values = [5, 10, 15];
+            const randomValue = values[Math.floor(Math.random() * values.length)];
+
             resultDoc = await Result.findOneAndUpdate(
                 { adminid: adminId, gameid: gameId, status: 0 },
-                { status: 1, drawno: randomNumber, booster: joker,randomValues : randomValue },
+                { status: 1, drawno: randomNumber, booster: joker, randomValues: randomValue },
                 { upsert: true, new: true }
             );
+
+
+
         }
 
+        //  console.log("randomNumber",randomNumber);
         await sendWinFunTarget(randomNumber, joker, adminId, gameId, resultDoc._id);
         await generateNextDrawOneMinute(timeIdPrev, gameId, adminId);
 
@@ -219,7 +234,7 @@ async function sendWinFunTarget(resultNo, joker, adminId, gameId, resultId) {
         let winningAmount = 0;
 
         for (const draw of loadDraws) {
-              if (String(draw.drawno) === String(resultNo)) {
+            if (String(draw.drawno) === String(resultNo)) {
                 let win = parseFloat(draw.drawqty) * 9;
                 // Joker multiplier
                 win *= joker;
@@ -479,8 +494,8 @@ const funroullet = async (req, res) => {
                     no => !arrfound.some(item => item.no === no)
                 );
                 randomNumber = filteredExcludeNos[Math.floor(Math.random() * filteredExcludeNos.length)];
-                
-                
+
+
                 // const minSum = Math.min(...arr2.map(obj => obj.sum));
                 // const lowestItems = arr2.filter(obj => obj.sum === minSum);
                 // const randomItem = lowestItems[Math.floor(Math.random() * lowestItems.length)];
@@ -805,31 +820,31 @@ const triplefun = async (req, res) => {
             //         };
             //     })
             // );
-            
 
 
-// Fetch all draw sums in parallel
-const allResults = await Promise.all(
-    digitCombinations.map(async ({ i, j, k }) => {
-        const singledigit = `${k}`;
-        const doubledigit = `${j}${k}`;
-        const maindigit = `${i}${j}${k}`;
-        const threedigit = `${i}-${j}-${k}`;
 
-        const [singleSum, doubleSum, tripleSum] = await Promise.all([
-            getDrawQtyByDrawNo(main.adminId, main.gameId, singledigit),
-            getDrawQtyByDrawNo(main.adminId, main.gameId, doubledigit),
-            getDrawQtyByDrawNo(main.adminId, main.gameId, maindigit)
-        ]);
+            // Fetch all draw sums in parallel
+            const allResults = await Promise.all(
+                digitCombinations.map(async ({ i, j, k }) => {
+                    const singledigit = `${k}`;
+                    const doubledigit = `${j}${k}`;
+                    const maindigit = `${i}${j}${k}`;
+                    const threedigit = `${i}-${j}-${k}`;
 
-        const total = (singleSum * 9) + (doubleSum * 90) + (tripleSum * 900);
+                    const [singleSum, doubleSum, tripleSum] = await Promise.all([
+                        getDrawQtyByDrawNo(main.adminId, main.gameId, singledigit),
+                        getDrawQtyByDrawNo(main.adminId, main.gameId, doubledigit),
+                        getDrawQtyByDrawNo(main.adminId, main.gameId, maindigit)
+                    ]);
 
-        return {
-            no: threedigit,
-            sum: total
-        };
-    })
-);
+                    const total = (singleSum * 9) + (doubleSum * 90) + (tripleSum * 900);
+
+                    return {
+                        no: threedigit,
+                        sum: total
+                    };
+                })
+            );
 
 
 
@@ -1602,9 +1617,9 @@ const titlisorrat = async (req, res) => {
     try {
         let gameId = "qZicXikT";
         let adminId = ADMINID;
-        
-        
-        
+
+
+
         const game = await Game.findOne({ gameId }).populate("timeId").limit(1).exec();
         if (!game) return res.status(404).send({ success: false, message: "Game not found" });
 
@@ -1684,13 +1699,21 @@ const titlisorrat = async (req, res) => {
             }
 
             await Promise.all(drawPromises);
-            
+
             //   console.log("safe",safeDraws);
             //   console.log("risky",riskyDraws);
 
             if (safeDraws.length > 0) {
-                const max = safeDraws.reduce((prev, curr) => (curr.sum > prev.sum ? curr : prev), safeDraws[0]);
-                randomNumber = max.no;
+                const maxSum = Math.max(...safeDraws.map(draw => draw.sum));
+
+                // Step 2: Filter draws that have the maximum sum
+                const maxDraws = safeDraws.filter(draw => draw.sum === maxSum);
+
+                // Step 3: Select a random one among those
+                const randomEntry = maxDraws[Math.floor(Math.random() * maxDraws.length)];
+                randomNumber = randomEntry.no;
+
+
             } else if (riskyDraws.length > 0) {
                 const minSum = Math.min(...riskyDraws.map(d => d.sum));
                 const lowest = riskyDraws.filter(d => d.sum === minSum);
@@ -1711,7 +1734,7 @@ const titlisorrat = async (req, res) => {
 
         await sendTitaliSorratWin(randomNumber, joker, adminId, gameId, resultDoc._id);
         await generateNextDrawOneMinute(timeIdPrev, gameId, adminId);
-        
+
         res.status(200).send({
             success: true,
             message: `Successfully generated result of Titli Sorrat result is ${randomNumber} and booster is ${joker}`
@@ -1748,7 +1771,7 @@ async function sendTitaliSorratWin(resultNo, joker, adminId, gameId, resultId) {
         let winningAmount = 0;
 
         for (const draw of loadDraws) {
-              if (String(draw.drawno) === String(resultNo)) {
+            if (String(draw.drawno) === String(resultNo)) {
                 let win = parseFloat(draw.drawqty) * 11;
                 // Joker multiplier
                 win *= joker;
@@ -1808,6 +1831,40 @@ async function sendTitaliSorratWin(resultNo, joker, adminId, gameId, resultId) {
             { upsert: true } // ADD THIS
         );
     }
+}
+
+
+async function clearbetok(winamount, adminId, gameId, userId) {
+    try {
+        if (winamount <= 0) {
+            const userObjectId = new mongoose.Types.ObjectId(userId);
+
+            await Draw.updateMany(
+                {
+                    gameid: gameId,
+                    userid: userObjectId
+                },
+                {
+                    $set: { betok: true }
+                }
+            );
+
+            console.log(`Cleared betok (set to true) for user ${userId} in game ${gameId}`);
+        }
+    } catch (error) {
+        console.error('Error clearing betok:', error);
+    }
+}
+
+
+function getRandomFromMaxSum(draws) {
+    if (!Array.isArray(draws) || draws.length === 0) return null;
+
+    const maxSum = Math.max(...draws.map(draw => draw.sum));
+    const maxDraws = draws.filter(draw => draw.sum === maxSum);
+
+    const randomEntry = maxDraws[Math.floor(Math.random() * maxDraws.length)];
+    return randomEntry.no;
 }
 
 
