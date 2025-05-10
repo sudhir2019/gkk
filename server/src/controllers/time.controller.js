@@ -5,7 +5,7 @@ async function timelist(req, res) {
     try {
         // Await the promise returned by Time.find().exec()
         let times = await Time.find().exec();
-        
+
         // Send the successful response
         res.send({
             message: "Successfully fetched times",
