@@ -242,7 +242,7 @@ const getAllPlayers = async (req, res) => {
                     .populate('refId', 'username')
                     .exec();
 
-                console.log(distributors);
+                // console.log(distributors);
 
                 // Loop through each distributor to fetch retailers
                 for (let distd of distributors) {
